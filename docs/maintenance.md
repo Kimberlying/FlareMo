@@ -60,6 +60,48 @@ pnpm verify
 
 生成的 SQL migration 必须提交。
 
+### 0025 tasks 重建迁移交接
+
+`0025_clammy_sunspot.sql` 会重建 `tasks`。D1 在删除旧表时仍会执行
+`task_activity.task_id` 的 `ON DELETE CASCADE`，因此迁移必须先暂存有关联任务的
+activity，并在新 `tasks` 表就位后按显式列名恢复。仓库中的迁移演练会用已有数据
+执行 `0000` 到最新迁移，并校验 tasks/activity 行数、activity 身份与外键完整性：
+
+```bash
+pnpm --filter @flaremo/db exec vitest run src/migrations.test.ts \
+  --config ../../vitest.config.ts
+```
+
+远端状态未经过仓库维护者确认前，不得直接运行 migration。拥有目标 Cloudflare
+账户权限的维护者按以下顺序接手；所有命令必须显式使用真实且不进 Git 的
+`wrangler.jsonc`，不要使用根目录中带占位 D1 ID 的 `wrangler.json`：
+
+1. 先运行 `pnpm backup:drill:remote` 完成隔离恢复演练，并保留生产 D1 的可恢复
+   备份或 Time Travel 恢复点。
+2. 查询未应用迁移：
+
+   ```bash
+   pnpm exec wrangler d1 migrations list DB --remote \
+     --config ./wrangler.jsonc
+   ```
+
+3. 同时查询迁移台账，避免把“未列出”误判为已应用或未发现：
+
+   ```bash
+   pnpm exec wrangler d1 execute DB --remote \
+     --config ./wrangler.jsonc \
+     --command "SELECT * FROM d1_migrations WHERE name LIKE '0025%';"
+   ```
+
+4. 执行前记录 `tasks`、全部 `task_activity`、有关联任务的 activity 和
+   `task_id IS NULL` activity 四项行数；迁移后逐项比较，并运行
+   `PRAGMA foreign_key_check`。
+
+如果 0025 尚未应用，在备份与本地演练都通过后应用修正后的 0025。如果 0025
+已经应用，不要改迁移台账或指望新的 0027 自动重建已删除的 activity 内容；先用
+备份或 Time Travel 判断是否发生丢失，再由维护者制定定向恢复 SQL。新的前向迁移
+只能修结构和仍然存在的数据，不能推断已经级联删除的历史内容。
+
 `v0.2.0` 起 Worker 每天 `03:17 UTC` 运行附件清理任务：删除超过 24 小时仍未绑定 memo 的对象，以及处于 `deleting` 状态的重试项。手动验证 scheduled handler：
 
 ```bash

@@ -1,4 +1,18 @@
-PRAGMA foreign_keys=OFF;--> statement-breakpoint
+-- Rebuilding `tasks` fires the `task_activity.task_id` ON DELETE CASCADE in
+-- D1. Preserve the linked activity rows explicitly; project-level activity
+-- with a NULL task_id is unaffected by the table replacement.
+CREATE TABLE `__temp_task_activity_0025` AS
+SELECT
+	`id`,
+	`task_id`,
+	`user_id`,
+	`actor_type`,
+	`actor_name`,
+	`action`,
+	`changes`,
+	`created_at`
+FROM `task_activity`
+WHERE `task_id` IS NOT NULL;--> statement-breakpoint
 CREATE TABLE `__new_tasks` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -21,7 +35,27 @@ CREATE TABLE `__new_tasks` (
 INSERT INTO `__new_tasks`("id", "user_id", "project_id", "title", "notes", "status", "priority", "due_at", "sort_order", "completed_at", "created_at", "updated_at") SELECT "id", "user_id", "project_id", "title", "notes", "status", "priority", "due_at", "sort_order", "completed_at", "created_at", "updated_at" FROM `tasks`;--> statement-breakpoint
 DROP TABLE `tasks`;--> statement-breakpoint
 ALTER TABLE `__new_tasks` RENAME TO `tasks`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
+INSERT INTO `task_activity` (
+	`id`,
+	`task_id`,
+	`user_id`,
+	`actor_type`,
+	`actor_name`,
+	`action`,
+	`changes`,
+	`created_at`
+)
+SELECT
+	`id`,
+	`task_id`,
+	`user_id`,
+	`actor_type`,
+	`actor_name`,
+	`action`,
+	`changes`,
+	`created_at`
+FROM `__temp_task_activity_0025`;--> statement-breakpoint
+DROP TABLE `__temp_task_activity_0025`;--> statement-breakpoint
 CREATE INDEX `tasks_user_project_status_sort_idx` ON `tasks` (`user_id`,`project_id`,`status`,`sort_order`);--> statement-breakpoint
 CREATE INDEX `tasks_user_due_idx` ON `tasks` (`user_id`,`due_at`);--> statement-breakpoint
 ALTER TABLE `projects` ADD `deleted_at` text;
