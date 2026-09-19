@@ -19,7 +19,10 @@ import { z } from "zod";
 import { cleanupFlaremoArtifacts } from "../artifact-cleanup";
 import { createFlareMoAuth, getPublicUrl, MEMOS_PAT_CONFIG_ID } from "../auth";
 import { getBrowserRequestContext, type HonoBindings } from "../context";
-import { resolveEmailConfig, sendEmailChangeVerificationEmail } from "../email";
+import {
+  resolveEmailSendConfig,
+  sendEmailChangeVerificationEmail,
+} from "../email";
 import { jsonError } from "../http";
 
 export const accountApi = new Hono<HonoBindings>();
@@ -153,7 +156,7 @@ accountApi.post("/email", zValidator("json", changeEmailSchema), async (c) => {
     // takes effect after the NEW address confirms ownership through its
     // verification link, so a typo cannot lock the account out of every
     // future email flow.
-    if (resolveEmailConfig(c.env).provider !== "none") {
+    if ((await resolveEmailSendConfig(c.env, context.db)).provider !== "none") {
       const existingAuthUser = await auth.findAuthUserByEmail(newEmail);
       if (existingAuthUser && existingAuthUser.id !== context.authUserId) {
         throw new ValidationError("That email is already in use.");
@@ -167,7 +170,7 @@ accountApi.post("/email", zValidator("json", changeEmailSchema), async (c) => {
         context.authUserId,
         newEmail,
       );
-      const sent = await sendEmailChangeVerificationEmail(c.env, {
+      const sent = await sendEmailChangeVerificationEmail(c.env, context.db, {
         to: newEmail,
         token,
         publicUrl: getPublicUrl(c.env),

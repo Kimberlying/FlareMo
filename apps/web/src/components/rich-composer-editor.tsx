@@ -1,3 +1,4 @@
+import type { AnyExtension } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -70,6 +71,13 @@ export type RichComposerEditorProps = {
   inputId?: string;
   /** Shared ref so the toolbar and the upload chain can drive the editor. */
   editorRef: React.RefObject<Editor | null>;
+  /**
+   * Extension override for other surfaces (article editor). Must include the
+   * Markdown extension — the in/out contract depends on it.
+   */
+  extensions?: AnyExtension[];
+  /** CSS applied to the contenteditable body (composer box by default). */
+  contentClassName?: string;
 };
 
 /**
@@ -106,6 +114,8 @@ export function RichComposerEditor({
   autoFocus = false,
   editorRef,
   inputId = "flaremo-composer-input",
+  extensions,
+  contentClassName = "composer-editor-content",
 }: RichComposerEditorProps) {
   // Callbacks are read through refs: TipTap captures the options object once,
   // so prop closures would go stale across renders.
@@ -128,7 +138,7 @@ export function RichComposerEditor({
     contentType: "markdown",
     content,
     editable: !disabled,
-    extensions: buildComposerExtensions(placeholder),
+    extensions: extensions ?? buildComposerExtensions(placeholder),
     editorProps: {
       attributes: {
         id: inputId,
@@ -139,7 +149,7 @@ export function RichComposerEditor({
         // multiline nature explicitly, per ARIA practice for rich editors.
         role: "textbox",
         "aria-multiline": "true",
-        class: "composer-editor-content",
+        class: contentClassName,
       },
       handleKeyDown: (view, event) => {
         // Enter sends; IME composition and Shift+Enter never submit. Same

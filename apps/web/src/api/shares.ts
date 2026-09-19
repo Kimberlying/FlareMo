@@ -8,6 +8,13 @@ export async function createShare(memo: string) {
   });
 }
 
+export async function listShares(memo: string) {
+  return apiRequest<{ shares: Share[] }>(
+    `/api/v1/memos/${encodeURIComponent(memo)}/shares`,
+    {},
+  );
+}
+
 export async function revokeShare(id: string) {
   return apiRequest<Share>(`/api/v1/shares/${encodeURIComponent(id)}`, {
     method: "DELETE",

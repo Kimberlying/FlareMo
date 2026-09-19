@@ -1,3 +1,4 @@
+import { prepareUploadFile } from "@/lib/upload-compression";
 import { apiRequest } from "./client";
 import type { Attachment } from "./types";
 
@@ -53,21 +54,28 @@ async function readImageDimensions(
 export async function uploadAttachment(input: {
   file: File;
   memo?: string;
+  article?: string;
   clientId?: string;
 }) {
+  // Uploads go through the compression pipeline last (settings-gated, never
+  // throws): probes below must read the actual bytes being uploaded.
+  const file = await prepareUploadFile(input.file);
   const formData = new FormData();
-  formData.set("file", input.file);
+  formData.set("file", file);
   if (input.memo) {
     formData.set("memo", input.memo);
+  }
+  if (input.article) {
+    formData.set("article", input.article);
   }
   if (input.clientId) {
     formData.set("client_id", input.clientId);
   }
-  const duration = await readAudioDuration(input.file);
+  const duration = await readAudioDuration(file);
   if (duration !== undefined) {
     formData.set("duration", String(duration));
   }
-  const dimensions = await readImageDimensions(input.file);
+  const dimensions = await readImageDimensions(file);
   if (dimensions) {
     formData.set("width", String(dimensions.width));
     formData.set("height", String(dimensions.height));

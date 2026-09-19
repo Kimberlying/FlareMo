@@ -1,9 +1,11 @@
 import type { Editor } from "@tiptap/react";
 import {
+  CalendarPlusIcon,
   CheckSquareIcon,
   HashIcon,
   ImageIcon,
   ListIcon,
+  ListOrderedIcon,
   Loader2Icon,
   LockIcon,
   MicIcon,
@@ -506,6 +508,20 @@ export function MemoComposer({
             <ListIcon />
           </Button>
           <Button
+            aria-label={t("composer.orderedList")}
+            disabled={isPending}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+            onClick={() =>
+              withEditor((editor) => {
+                editor.chain().focus().toggleOrderedList().run();
+              })
+            }
+          >
+            <ListOrderedIcon />
+          </Button>
+          <Button
             aria-label={t("composer.taskList")}
             disabled={isPending}
             size="icon-sm"
@@ -518,6 +534,22 @@ export function MemoComposer({
             }
           >
             <CheckSquareIcon />
+          </Button>
+          <Button
+            aria-label={t("composer.insertDate")}
+            disabled={isPending}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+            onClick={() =>
+              withEditor((editor) => {
+                const today = new Date().toISOString().slice(0, 10);
+                editor.chain().focus().insertContent(`${today} `).run();
+              })
+            }
+            title={t("composer.insertDate")}
+          >
+            <CalendarPlusIcon />
           </Button>
           {captureAvailable && (
             <Button

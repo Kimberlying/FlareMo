@@ -12,6 +12,7 @@ import { AuthPageFrame } from "@/components/auth-page-frame";
 import { CaptchaField } from "@/components/captcha-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useI18n } from "@/i18n";
 import { errorMessage } from "@/lib/error";
 
@@ -219,14 +220,13 @@ export function RegisterPage() {
             htmlFor="register-password"
           >
             {t("auth.password")}
-            <Input
+            <PasswordInput
               autoComplete="new-password"
               disabled={isSubmitting}
               id="register-password"
               minLength={MIN_PASSWORD_LENGTH}
               name="password"
               required
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -236,14 +236,13 @@ export function RegisterPage() {
             htmlFor="register-password-confirmation"
           >
             {t("auth.confirmPassword")}
-            <Input
+            <PasswordInput
               autoComplete="new-password"
               disabled={isSubmitting}
               id="register-password-confirmation"
               minLength={MIN_PASSWORD_LENGTH}
               name="password-confirmation"
               required
-              type="password"
               value={passwordConfirmation}
               onChange={(event) => setPasswordConfirmation(event.target.value)}
             />

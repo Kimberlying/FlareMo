@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  #card {
+    width: 340px;
+    height: 420px;
+    box-sizing: border-box;
+    background: #fbf8f1;
+    color: #2f2b26;
+    padding: 26px 28px;
+    display: flex;
+    flex-direction: column;
+    /* No Han face is named on purpose: the host stamps lang on this
+       document, and the generic serif resolves per script from it. */
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8a8072;
+  }
+  .postmark { position: relative; width: 104px; height: 104px; margin: -10px -8px 0 0; }
+  .postmark canvas, .postmark .ring, .postmark .stamp-text {
+    position: absolute;
+    inset: 0;
+    width: 104px;
+    height: 104px;
+  }
+  .postmark .ring {
+    inset: 10px;
+    width: 84px;
+    height: 84px;
+    border: 2px solid var(--ink, #c2410c);
+    border-radius: 50%;
+    opacity: 0.72;
+  }
+  .postmark .stamp-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-line;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink, #c2410c);
+    opacity: 0.85;
+  }
+  .body {
+    flex: 1;
+    margin-top: 16px;
+    font-size: 15px;
+    line-height: 1.9;
+    white-space: pre-wrap;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 8;
+    -webkit-box-orient: vertical;
+  }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    border-top: 1px dashed #d8cfbe;
+    padding-top: 12px;
+  }
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="head">
+    <div class="meta" id="date"></div>
+    <div class="postmark">
+      <canvas id="waves" height="208" width="208"></canvas>
+      <div class="ring"></div>
+      <div class="stamp-text" id="stamp-text"></div>
+    </div>
+  </div>
+  <div class="body" id="body"></div>
+  <div class="foot">
+    <div class="meta" id="stats"></div>
+    <div class="meta" id="brand"></div>
+  </div>
+</div>
+<script>
+  window.__flaremoCaptureTarget = document.getElementById("card");
+
+  function drawWaves(canvas, color) {
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 3;
+    for (var i = 0; i < 4; i += 1) {
+      var y = 48 + i * 36;
+      ctx.beginPath();
+      for (var x = -12; x <= 220; x += 4) {
+        var wave = Math.sin((x + i * 30) / 26) * 6;
+        if (x === -12) {
+          ctx.moveTo(x, y + wave);
+        } else {
+          ctx.lineTo(x, y + wave);
+        }
+      }
+      ctx.stroke();
+    }
+  }
+
+  window.__flaremoOnUpdate = function (payload) {
+    var data = (payload && payload.data) || {};
+    var options = (payload && payload.options) || {};
+    var brand = data.brand || {};
+    var ink = options.accent || "#c2410c";
+    document.getElementById("date").textContent = data.date || "";
+    document.getElementById("body").textContent = data.body || "";
+    document.getElementById("stats").textContent = data.stats || "";
+    document.getElementById("brand").textContent = brand.product || "";
+    document.getElementById("stamp-text").textContent =
+      (data.locale === "zh-CN" ? "已阅" : "FILED") + "\n" + (data.day || "");
+    document.getElementById("card").style.setProperty("--ink", ink);
+    drawWaves(document.getElementById("waves"), ink);
+  };
+</script>
+</body>
+</html>

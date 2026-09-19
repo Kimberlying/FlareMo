@@ -105,6 +105,7 @@ export const MemoContent = memo(function MemoContent({
   resolveImageDimensions,
   onToggleTask,
   onConvertTask,
+  rehypePlugins,
 }: {
   className?: string;
   content: string;
@@ -132,6 +133,11 @@ export const MemoContent = memo(function MemoContent({
   resolveImageDimensions?: (
     src: string,
   ) => { width: number; height: number } | undefined;
+  /**
+   * Article-surface extras (Shiki highlighting) passed straight through to
+   * the markdown processor. Memo cards never set it.
+   */
+  rehypePlugins?: import("unified").Pluggable[];
 } & TaskInteraction) {
   const { t } = useI18n();
   // Transcript bodies rewrite clock markers into `#flaremo-t=` links before
@@ -293,6 +299,7 @@ export const MemoContent = memo(function MemoContent({
             );
           },
         }}
+        rehypePlugins={rehypePlugins}
         remarkPlugins={[remarkGfm]}
         skipHtml
       >

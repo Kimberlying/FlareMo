@@ -128,6 +128,7 @@ function ArticleReadingView({
   onToggleTask,
   onConvertTask,
   resolveImageDimensions,
+  hasAudio,
 }: Required<Pick<ReadingViewProps, "attachments" | "content">> &
   Pick<
     ReadingViewProps,
@@ -136,10 +137,12 @@ function ArticleReadingView({
     resolveImageDimensions: (
       src: string,
     ) => { width: number; height: number } | undefined;
+    /** Audio reading adds the sticky transport + transcript highlight. */
+    hasAudio: boolean;
   }) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const audio = useReadingAudio();
-  useParagraphHighlight(bodyRef, Boolean(audio?.track));
+  useParagraphHighlight(bodyRef, hasAudio && Boolean(audio?.track));
 
   // Audio rides in the sticky bar and body-referenced images render inline,
   // so the gallery keeps only the files the body does not already show.
@@ -148,11 +151,14 @@ function ArticleReadingView({
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      <ReadingAudioBar />
+      {hasAudio && <ReadingAudioBar />}
       {/* Stacked on narrow screens (outline collapsed above the body), two
           columns from lg up. The width classes are lg-scoped so the mobile
           outline takes the full row instead of squeezing the transcript. */}
       <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+        {/* The outline is article-layout equipment, not audio equipment:
+            any piece with ≥2 headings gets a TOC (MemoOutline hides itself
+            below that threshold). */}
         <MemoOutline
           className="lg:order-2 lg:w-44 lg:shrink-0"
           content={content}
@@ -164,7 +170,7 @@ function ArticleReadingView({
           <LazyMemoContent
             className={contentClassName}
             content={content}
-            onTimestampClick={audio?.seek}
+            onTimestampClick={hasAudio ? audio?.seek : undefined}
             resolveImageDimensions={resolveImageDimensions}
             withHeadingIds
             onToggleTask={onToggleTask}
@@ -237,19 +243,25 @@ export function MemoReadingView({
     [attachments],
   );
 
-  if (layout === "article" && tracks.length > 0) {
-    return (
-      <ReadingAudioProvider tracks={tracks}>
-        <ArticleReadingView
-          attachments={attachments}
-          className={className}
-          content={content}
-          contentClassName={contentClassName}
-          resolveImageDimensions={resolveImageDimensions}
-          onToggleTask={onToggleTask}
-          onConvertTask={onConvertTask}
-        />
-      </ReadingAudioProvider>
+  if (layout === "article") {
+    const readingView = (
+      <ArticleReadingView
+        attachments={attachments}
+        className={className}
+        content={content}
+        contentClassName={contentClassName}
+        hasAudio={tracks.length > 0}
+        resolveImageDimensions={resolveImageDimensions}
+        onToggleTask={onToggleTask}
+        onConvertTask={onConvertTask}
+      />
+    );
+    // Audio articles additionally get the transport provider (seek/follow);
+    // text articles share the same outline + body treatment without one.
+    return tracks.length > 0 ? (
+      <ReadingAudioProvider tracks={tracks}>{readingView}</ReadingAudioProvider>
+    ) : (
+      readingView
     );
   }
 

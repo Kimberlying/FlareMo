@@ -11,6 +11,7 @@ import {
   getDailyReview,
   getMemoContext,
   getRelatedMemos,
+  listArticles,
   listMemories,
   listProjects,
   listTasks,
@@ -116,6 +117,16 @@ const CalendarPage = lazy(() =>
 const CapturePage = lazy(() =>
   import("@/pages/capture-page").then((module) => ({
     default: module.CapturePage,
+  })),
+);
+const ArticlesPage = lazy(() =>
+  import("@/pages/articles-page").then((module) => ({
+    default: module.ArticlesPage,
+  })),
+);
+const ArticleEditorPage = lazy(() =>
+  import("@/pages/article-editor-page").then((module) => ({
+    default: module.ArticleEditorPage,
   })),
 );
 
@@ -480,6 +491,47 @@ const captureRoute = createRoute({
   component: CaptureRoutePage,
 });
 
+function ArticlesRoutePage() {
+  return (
+    <AuthenticatedRoute>
+      <Suspense fallback={<RouteLoading />}>
+        <ArticlesPage />
+      </Suspense>
+    </AuthenticatedRoute>
+  );
+}
+
+const articlesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/articles",
+  component: ArticlesRoutePage,
+  loader: ({ context }) => {
+    warmQuery(
+      context.queryClient.ensureQueryData({
+        queryKey: ["articles"],
+        queryFn: () => listArticles({ include_deleted: true }),
+      }),
+    );
+  },
+});
+
+function ArticleEditorRoutePage() {
+  const { articleId } = articleEditRoute.useParams();
+  return (
+    <AuthenticatedRoute>
+      <Suspense fallback={<RouteLoading />}>
+        <ArticleEditorPage articleId={articleId} />
+      </Suspense>
+    </AuthenticatedRoute>
+  );
+}
+
+const articleEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/articles/$articleId/edit",
+  component: ArticleEditorRoutePage,
+});
+
 const router = createRouter({
   defaultPreload: "intent",
   // The real QueryClient is injected by AppRoutes (inside
@@ -505,6 +557,8 @@ const router = createRouter({
     projectsRoute,
     calendarRoute,
     captureRoute,
+    articlesRoute,
+    articleEditRoute,
   ]),
   scrollRestoration: true,
 });

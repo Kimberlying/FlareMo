@@ -44,6 +44,28 @@
           themeColor.content = resolved === "dark" ? "#0d0c0b" : "#faf9f7";
         }
       } catch {}
+      // Mirror I18nProvider's resolution (stored preference, else navigator)
+      // before first paint: `lang` picks the CJK font family per script, and
+      // `dir` keeps Arabic from painting LTR and then flipping on hydration.
+      // Keep this list in sync with the Locale union in src/i18n.tsx.
+      try {
+        const locales = ["zh-CN", "en-US", "ja", "fr", "es", "ko", "ru", "ar"];
+        const base = (value) => value.toLowerCase().split("-")[0];
+        const stored = localStorage.getItem("flaremo.locale");
+        let locale = locales.includes(stored) ? stored : null;
+        if (!locale) {
+          for (const candidate of navigator.languages || []) {
+            const match = locales.find((l) => base(l) === base(candidate));
+            if (match) {
+              locale = match;
+              break;
+            }
+          }
+        }
+        locale = locale || "en-US";
+        document.documentElement.lang = locale;
+        document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+      } catch {}
     </script>
   </head>
   <body>

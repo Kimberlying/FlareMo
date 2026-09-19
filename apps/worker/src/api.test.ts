@@ -2182,6 +2182,14 @@ describe("FlareMo Worker API", () => {
     expect(report.plan?.usage.maxMembersPerDeployment).toBe(1);
   });
 
+  it("hides the Cloudflare usage section until analytics secrets are set", async () => {
+    const report = await json<{ available: boolean }>(
+      await fetchApp("http://flaremo.test/api/app/usage/cloudflare"),
+    );
+    // Owner session, but FLAREMO_CF_* secrets absent -> feature off.
+    expect(report.available).toBe(false);
+  });
+
   it("rejects an attachment upload over the storage quota with 429", async () => {
     const quotaApp = createFlareMoApp({
       resolvePlanLimits: () => ({
@@ -3403,6 +3411,214 @@ describe("FlareMo Worker API", () => {
       env,
     );
     expect(patAppHealth.status).toBe(401);
+  });
+
+  it("lets the instance owner's PAT drive the admin surface and provision reader seats by email", async () => {
+    // The owner mints a PAT through their browser session.
+    const created = await json<{ token: string }>(
+      await fetchApp(
+        "http://flaremo.test/api/app/account/personal-access-tokens",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name: "provisioning", expires_in_days: 30 }),
+        },
+      ),
+    );
+    expect(created.token).toMatch(/^memos_pat_/);
+
+    // A PAT acts as its owner on the admin surface.
+    const members = await json<{ users: Array<{ id: string; role: string }> }>(
+      await app.fetch(
+        new Request("http://flaremo.test/api/app/admin/users", {
+          headers: { authorization: `Bearer ${created.token}` },
+        }),
+        env,
+      ),
+    );
+    expect(members.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "users/owner", role: "owner" }),
+      ]),
+    );
+
+    // A non-admin member's PAT fails the same role check as their session.
+    const member = await createActivatedMember(
+      "provision-denied@example.com",
+      "Provision Denied",
+    );
+    const memberToken = await json<{ token: string }>(
+      await app.fetch(
+        new Request(
+          "http://flaremo.test/api/app/account/personal-access-tokens",
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              cookie: member.cookie,
+              origin: "http://flaremo.test",
+            },
+            body: JSON.stringify({ name: "self" }),
+          },
+        ),
+        env,
+      ),
+    );
+    const denied = await app.fetch(
+      new Request("http://flaremo.test/api/app/admin/users", {
+        headers: { authorization: `Bearer ${memberToken.token}` },
+      }),
+      env,
+    );
+    expect(denied.status).toBe(403);
+
+    // Machine provisioning: an unknown email creates an account plus a
+    // one-time activation link, ready to hand to the reader.
+    const provisioned = await json<{
+      id: string;
+      role: string;
+      created: boolean;
+      activation_path: string;
+      reader_expires_at: string | null;
+      username: string;
+    }>(
+      await app.fetch(
+        new Request("http://flaremo.test/api/app/admin/team/reader", {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${created.token}`,
+          },
+          body: JSON.stringify({
+            email: "paid-reader@example.com",
+            expires_at: "2027-01-01T00:00:00.000Z",
+          }),
+        }),
+        env,
+      ),
+    );
+    expect(provisioned.created).toBe(true);
+    expect(provisioned.role).toBe("reader");
+    expect(provisioned.reader_expires_at).toBe("2027-01-01T00:00:00.000Z");
+    expect(provisioned.activation_path).toMatch(/^\/reset\?token=/);
+
+    // Idempotent renewal: the same email re-grants with a new absolute date.
+    const renewed = await json<{
+      created: boolean;
+      role: string;
+      reader_expires_at: string | null;
+    }>(
+      await app.fetch(
+        new Request("http://flaremo.test/api/app/admin/team/reader", {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${created.token}`,
+          },
+          body: JSON.stringify({
+            email: "paid-reader@example.com",
+            expires_at: "2027-06-01T00:00:00.000Z",
+          }),
+        }),
+        env,
+      ),
+    );
+    expect(renewed.created).toBe(false);
+    expect(renewed.reader_expires_at).toBe("2027-06-01T00:00:00.000Z");
+
+    // The seat is visible in the admin member list.
+    const memberList = await json<{
+      users: Array<{
+        id: string;
+        role: string;
+        reader_expires_at: string | null;
+      }>;
+    }>(
+      await app.fetch(
+        new Request("http://flaremo.test/api/app/admin/users", {
+          headers: { authorization: `Bearer ${created.token}` },
+        }),
+        env,
+      ),
+    );
+    const readerRow = memberList.users.find((row) => row.role === "reader");
+    expect(readerRow).toEqual(
+      expect.objectContaining({
+        role: "reader",
+        reader_expires_at: "2027-06-01T00:00:00.000Z",
+      }),
+    );
+
+    // Never demote the owner or an administrator into a reader.
+    const demoteOwner = await app.fetch(
+      new Request("http://flaremo.test/api/app/admin/team/reader", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${created.token}`,
+        },
+        body: JSON.stringify({
+          email: "owner@example.com",
+          expires_at: "2027-01-01T00:00:00.000Z",
+        }),
+      }),
+      env,
+    );
+    expect(demoteOwner.status).toBe(403);
+
+    // After activation and sign-in the reader sees their own seat in /me.
+    const activationToken = new URL(
+      `http://flaremo.test${provisioned.activation_path}`,
+    ).searchParams.get("token");
+    const reset = await app.fetch(
+      new Request("http://flaremo.test/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://flaremo.test",
+        },
+        body: JSON.stringify({
+          token: activationToken,
+          newPassword: TEST_PASSWORD,
+        }),
+      }),
+      env,
+    );
+    expect(reset.status).toBe(200);
+    const readerSignIn = await app.fetch(
+      new Request("http://flaremo.test/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://flaremo.test",
+        },
+        body: JSON.stringify({
+          email: "paid-reader@example.com",
+          password: TEST_PASSWORD,
+        }),
+      }),
+      env,
+    );
+    expect(readerSignIn.status).toBe(200);
+    const me = await json<{
+      role: string | null;
+      team: { id: string } | null;
+      team_expired: boolean;
+      reader_expires_at: string | null;
+    }>(
+      await app.fetch(
+        new Request("http://flaremo.test/api/app/me", {
+          headers: { cookie: extractCookieHeader(readerSignIn) },
+        }),
+        env,
+      ),
+    );
+    expect(me.role).toBe("reader");
+    expect(me.team).toEqual(
+      expect.objectContaining({ id: "orgs/default-team" }),
+    );
+    expect(me.team_expired).toBe(false);
+    expect(me.reader_expires_at).toBe("2027-06-01T00:00:00.000Z");
   });
 
   it("replays member removal without deleting retained team or public content", async () => {

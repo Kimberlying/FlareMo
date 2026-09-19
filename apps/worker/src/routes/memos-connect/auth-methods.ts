@@ -14,7 +14,7 @@ import {
   getFlareMoRuntime,
   type getRequestContext,
 } from "../../context";
-import { resolveEmailConfig } from "../../email";
+import { resolveEmailSendConfig } from "../../email";
 import { getAuthUserCached } from "../../identity-cache";
 import {
   isBetterAuthCredentialError,
@@ -240,7 +240,7 @@ export async function connectAuthSignUp(
     // verifying a real mailbox through the web app. This compat surface
     // cannot complete that flow, so refuse rather than minting unverified
     // accounts that bypass the deployment's anti-abuse gate.
-    if (resolveEmailConfig(c.env).provider !== "none") {
+    if ((await resolveEmailSendConfig(c.env, db)).provider !== "none") {
       throw new ForbiddenError(
         "Email verification is required. Please use the FlareMo web app to sign up.",
       );

@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "plugins"
 overrides:
   "@esbuild-kit/core-utils>esbuild": 0.25.12
   fast-uri: "^3.1.5"

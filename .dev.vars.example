@@ -10,3 +10,12 @@ FLAREMO_TRUSTED_ORIGINS=
 BETTER_AUTH_SECRET=<local-secret-at-least-32-characters>
 FLAREMO_BOOTSTRAP_SECRET=<local-one-time-bootstrap-secret>
 FLAREMO_RECOVERY_SECRET=<local-break-glass-recovery-secret>
+
+# 可选：Cloudflare 资源用量面板（设置→用量）。生产用 `pnpm setup:usage`
+# 写入 Worker secret；本地 dev 想看这块时手动填入（token 只需要
+# Account Analytics: Read 权限）。留空则面板隐藏该区块。
+# FLAREMO_CF_ANALYTICS_TOKEN=<token-with-account-analytics-read>
+# FLAREMO_CF_ACCOUNT_ID=<32-hex-account-id>
+# FLAREMO_CF_WORKER_NAME=flaremo
+# FLAREMO_CF_D1_ID=<d1-database-uuid>
+# FLAREMO_CF_R2_BUCKET=flaremo-attachments

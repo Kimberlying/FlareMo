@@ -62,6 +62,16 @@ export function readSavedPosition(id: string): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+/**
+ * Ogg streams without a known trailing granule report `Infinity` here, and the
+ * clock formatter would render that as "Infinity:NaN:NaN". An unknown length
+ * shows as 0 (the bar then falls back to the position readout) until the
+ * element reports a real value.
+ */
+function finiteDuration(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function savePosition(id: string, seconds: number) {
   if (typeof localStorage === "undefined") return;
   try {
@@ -95,7 +105,9 @@ export function ReadingAudioProvider({
   const [errored, setErrored] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   // Seeded from the upload-time duration so the readout is real immediately.
-  const [duration, setDuration] = useState(tracks[0]?.durationSeconds ?? 0);
+  const [duration, setDuration] = useState(
+    finiteDuration(tracks[0]?.durationSeconds ?? 0),
+  );
   const [rate, setRateState] = useState(1);
   const [follow, setFollow] = useState(true);
 
@@ -123,7 +135,7 @@ export function ReadingAudioProvider({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !track) return;
-    setDuration(track.durationSeconds ?? 0);
+    setDuration(finiteDuration(track.durationSeconds ?? 0));
     const saved = readSavedPosition(track.id);
     const apply = () => {
       if (saved > 0 && audio.duration > saved + 1) {
@@ -311,7 +323,7 @@ export function ReadingAudioProvider({
         // biome-ignore lint/a11y/useMediaCaption: user-supplied audio has no caption track.
         <audio
           onDurationChange={(event) =>
-            setDuration(event.currentTarget.duration)
+            setDuration(finiteDuration(event.currentTarget.duration))
           }
           onEnded={() => setPlaying(false)}
           onError={() => {

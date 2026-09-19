@@ -283,18 +283,64 @@ export async function updateTeamMemberRole(
   if (!member) {
     throw new NotFoundError("Active member not found");
   }
-  if (member.role !== "member" && role === "member") {
+  // Demoting an administrator requires another active admin; promoting a
+  // reader to member does not (a reader seat is not an administrator).
+  if (member.role === "admin" && role === "member") {
     await assertAnotherActiveTeamAdmin(db, authUserId);
   }
+  // Leaving the reader seat invalidates its expiry so stale dates cannot
+  // resurface if the user becomes a reader again later.
   await db
     .update(authMembers)
-    .set({ role })
+    .set({ role, expiresAt: role === "reader" ? member.expiresAt : null })
     .where(
       and(
         eq(authMembers.id, member.id),
         eq(authMembers.organizationId, team.id),
       ),
     );
+}
+
+/**
+ * Grant the read-only reader seat (community membership) to a user, storing
+ * the absolute expiry (null = no expiry). Existing rows of any role become
+ * reader rows; non-members get a reader membership in the default team. The
+ * caller (admin API) computes renewal dates, so domain storage stays simple.
+ */
+export async function grantTeamReader(
+  db: FlareMoDb,
+  input: { authUserId: string; expiresAt: Date | null },
+): Promise<void> {
+  const team = await ensureDefaultTeam(db);
+  await db
+    .insert(authMembers)
+    .values({
+      id: `members/${crypto.randomUUID()}`,
+      organizationId: team.id,
+      userId: input.authUserId,
+      role: "reader",
+      expiresAt: input.expiresAt,
+      createdAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [authMembers.organizationId, authMembers.userId],
+      set: { role: "reader", expiresAt: input.expiresAt },
+    });
+}
+
+/**
+ * Revoke the reader seat by removing the membership row: the user drops out
+ * of the team entirely. Readers never authored team memos (publishing is
+ * denied at resolveMemoTeamId), so no owner-claim follow-up is required —
+ * unless they previously demoted from a full member, in which case their
+ * existing team memos stay published and visible, exactly like a member
+ * leaving without account removal.
+ */
+export async function revokeTeamReader(
+  db: FlareMoDb,
+  authUserId: string,
+): Promise<void> {
+  await removeTeamMember(db, authUserId);
 }
 
 /**

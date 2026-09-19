@@ -1,0 +1,61 @@
+{
+  "specVersion": 1,
+  "id": "sandbox-demo",
+  "version": "1.0.0",
+  "name": {
+    "zh-CN": "沙箱示例",
+    "en-US": "Sandbox demo",
+    "ja": "サンドボックス例",
+    "ko": "샌드박스 예시",
+    "ru": "Пример песочницы",
+    "fr": "Démo sandbox",
+    "es": "Demo sandbox",
+    "ar": "عرض الصندوق الرملي"
+  },
+  "description": {
+    "zh-CN": "一张用自由 HTML/Canvas 绘制的邮戳卡，演示沙箱插件能力。",
+    "en-US": "A postmark card drawn with free-form HTML/Canvas, demonstrating sandbox plugins."
+  },
+  "author": {
+    "name": "FlareMo"
+  },
+  "license": "AGPL-3.0-only",
+  "defaultEnabled": true,
+  "contributes": {
+    "shareCardTemplates": [
+      {
+        "id": "stamp",
+        "kind": "sandbox",
+        "name": {
+          "zh-CN": "邮戳",
+          "en-US": "Postmark",
+          "ja": "消印",
+          "ko": "소인",
+          "ru": "Штемпель",
+          "fr": "Cachet",
+          "es": "Matasellos",
+          "ar": "ختم بريدي"
+        },
+        "entry": "cards/stamp/index.html",
+        "options": [
+          {
+            "key": "accent",
+            "type": "color",
+            "label": {
+              "zh-CN": "邮戳颜色",
+              "en-US": "Postmark color",
+              "ja": "消印の色",
+              "ko": "소인 색상",
+              "ru": "Цвет штемпеля",
+              "fr": "Couleur du cachet",
+              "es": "Color del matasellos",
+              "ar": "لون الختم"
+            },
+            "default": "#c2410c"
+          }
+        ],
+        "preview": "cards/stamp.preview.png"
+      }
+    ]
+  }
+}

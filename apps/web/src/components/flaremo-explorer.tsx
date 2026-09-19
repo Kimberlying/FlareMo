@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   CalendarIcon,
   ChevronRightIcon,
+  FileTextIcon,
   FolderKanbanIcon,
   FootprintsIcon,
   HashIcon,
@@ -26,7 +27,6 @@ import {
   type TagHierarchyNode,
 } from "@/api";
 import { authClient } from "@/auth-client";
-import { FlareMoLogo } from "@/components/flaremo-logo";
 import {
   MiniCalendarPanel,
   MiniCalendarReminders,
@@ -67,6 +67,10 @@ function readTimeView(): TimeView {
 type FlareMoExplorerProps = {
   activeTag?: string;
   footer?: ReactNode;
+  /** Top-left slot (the member menu trigger). Branding lives in the favicon
+   * and share pages, not here. */
+  header?: ReactNode;
+  /** Top-right slot (e.g. the desktop collapse-sidebar button). */
   headerAction?: ReactNode;
   hierarchy: TagHierarchyNode[];
   hierarchyPending?: boolean;
@@ -84,6 +88,7 @@ type FlareMoExplorerProps = {
 export const FlareMoExplorer = memo(function FlareMoExplorer({
   activeTag,
   footer,
+  header,
   headerAction,
   hierarchy,
   hierarchyPending = false,
@@ -123,7 +128,7 @@ export const FlareMoExplorer = memo(function FlareMoExplorer({
   return (
     <aside className="flex min-h-full flex-col px-3 py-4 text-sm">
       <header className="mb-5 flex items-center justify-between gap-2 px-1">
-        <FlareMoLogo />
+        {header}
         {headerAction}
       </header>
 
@@ -274,6 +279,14 @@ export const FlareMoExplorer = memo(function FlareMoExplorer({
         >
           <FolderKanbanIcon />
           <span className="min-w-0 flex-1 truncate">{t("nav.projects")}</span>
+        </Link>
+        <Link
+          className="flex h-9 items-center gap-3 rounded-lg px-2.5 text-muted-foreground motion-safe:transition-[background-color,color,transform] motion-safe:duration-150 hover:bg-muted hover:text-foreground motion-safe:hover:translate-x-0.5"
+          onClick={onNavigate}
+          to="/articles"
+        >
+          <FileTextIcon />
+          <span className="min-w-0 flex-1 truncate">{t("nav.articles")}</span>
         </Link>
       </nav>
 

@@ -1,7 +1,10 @@
 import type {
   AppNotificationDto,
+  ArticleDto,
+  ArticleSummaryDto,
   AttachmentDto,
   CalendarView,
+  CreateArticleInput,
   CreateMemoInput,
   CreateMemoryInput,
   CreateProjectInput,
@@ -22,6 +25,7 @@ import type {
   TaskDto,
   TaskPriority,
   TaskStatus,
+  UpdateArticleInput,
   UpdateMemoInput,
   UpdateMemoryInput,
   UpdateProjectInput,
@@ -47,6 +51,27 @@ export type {
   VectorUsageReport,
 };
 
+// Deployment-specific: Cloudflare account analytics reported by the worker
+// (see apps/worker/src/cf-analytics.ts). Owner-only, hidden until
+// `pnpm setup:usage` writes the analytics secrets.
+export type CloudflareUsageReport = {
+  available: boolean;
+  window: { since: string; until: string };
+  errors: string[];
+  workers: { requests: number; subrequests: number; errors: number } | null;
+  d1: {
+    storageBytes: number | null;
+    rowsRead: number;
+    rowsWritten: number;
+  } | null;
+  r2: {
+    storageBytes: number | null;
+    objectCount: number | null;
+    classAOps: number;
+    classBOps: number;
+  } | null;
+};
+
 export type CreateMemoRequest = CreateMemoInput;
 export type UpdateMemoRequest = UpdateMemoInput;
 export type CreateMemoryRequest = CreateMemoryInput;
@@ -54,6 +79,10 @@ export type UpdateMemoryRequest = UpdateMemoryInput;
 
 export type Project = ProjectDto;
 export type Task = TaskDto;
+export type Article = ArticleDto;
+export type ArticleSummary = ArticleSummaryDto;
+export type CreateArticleRequest = CreateArticleInput;
+export type UpdateArticleRequest = UpdateArticleInput;
 export type Calendar = CalendarView;
 export type CreateProjectRequest = CreateProjectInput;
 export type UpdateProjectRequest = UpdateProjectInput;
@@ -124,15 +153,19 @@ export type RegistrationStatus = {
 
 export type CurrentFlareMoUser = {
   id: string;
-  role: "owner" | "admin" | "member" | null;
+  role: "owner" | "admin" | "member" | "reader" | null;
   is_instance_owner: boolean;
   can_manage_voice_service: boolean;
   status: "active" | "removed";
   name: string;
   email: string;
   username: string;
-  /** Present when the viewer holds a team membership; drives the space UI. */
+  /** Present when the viewer holds an unexpired team membership; drives the space UI. */
   team: { id: string; name: string } | null;
+  /** True when a reader seat exists but has lapsed: the team space is hidden and a renewal notice shows instead. */
+  team_expired?: boolean;
+  /** Absolute expiry of the viewer's own reader seat (ISO string); null = seat without expiry. Present for readers only. */
+  reader_expires_at?: string | null;
 };
 
 /** Workspace partition of the memo corpus (see docs/team-space-ux.md). */
@@ -143,7 +176,9 @@ export type AdminUser = {
   email: string;
   name: string;
   username: string;
-  role: "owner" | "admin" | "member" | null;
+  role: "owner" | "admin" | "member" | "reader" | null;
+  /** Absolute expiry of the reader seat (ISO string), null when not a reader or the seat has no expiry. */
+  reader_expires_at: string | null;
   status: "active" | "removed";
   created_at: string;
 };

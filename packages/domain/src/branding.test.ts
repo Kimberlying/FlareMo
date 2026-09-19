@@ -4,11 +4,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { completeOwnerBootstrap } from "./auth";
 import {
   BRANDING_ACCENT_PRESETS,
+  clearBrandingFavicon,
   DEFAULT_BRANDING_ACCENT,
   getBranding,
   normalizeBrandingAccent,
   setBrandingAccent,
   setBrandingProductName,
+  upsertBrandingFavicon,
 } from "./branding";
 import { ValidationError } from "./errors";
 
@@ -103,5 +105,29 @@ describe("instance branding accent", () => {
     expect(branding.accent).toBe("custom");
     expect(branding.accentHex).toBe("#7c3aed");
     expect((await getBranding(db)).accent).toBe("custom");
+  });
+
+  it("round-trips a custom favicon across other branding writes", async () => {
+    await upsertBrandingFavicon(db, "image/x-icon");
+    let branding = await getBranding(db);
+    expect(branding.favicon).not.toBeNull();
+    expect(branding.favicon?.content_type).toBe("image/x-icon");
+    expect(branding.favicon?.r2_key).toBe("branding/favicon");
+    // Unrelated writes must not drop the favicon record.
+    await setBrandingProductName(db, "KOS 知识库");
+    await setBrandingAccent(db, "iris");
+    branding = await getBranding(db);
+    expect(branding.favicon).not.toBeNull();
+    expect(branding.product).toBe("KOS 知识库");
+    expect(branding.accent).toBe("iris");
+    const staleKey = await clearBrandingFavicon(db);
+    expect(staleKey).toBe("branding/favicon");
+    expect((await getBranding(db)).favicon).toBeNull();
+  });
+
+  it("rejects unsupported favicon content types", async () => {
+    await expect(upsertBrandingFavicon(db, "text/html")).rejects.toThrow(
+      ValidationError,
+    );
   });
 });

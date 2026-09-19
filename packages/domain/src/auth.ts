@@ -256,21 +256,24 @@ export async function getOwnerAuthUserId(
 }
 
 /**
- * Resolve the deployment team membership (role + organization id) for a
- * Better Auth identity in one indexed query. Null when the deployment has no
- * team or the identity is not a member.
+ * The raw membership row for the default team, without expiry handling.
+ * Callers that enforce access must prefer {@link getViewerTeamMembership},
+ * which folds expired readers out; this exists for /me (surfacing the
+ * expired state) and the admin member list.
  */
-export async function getViewerTeamMembership(
+export async function getMembershipState(
   db: FlareMoDb,
   authUserId: string,
 ): Promise<{
   role: TeamRole;
   organizationId: string;
   organizationName: string;
+  expiresAt: Date | null;
 } | null> {
   const row = await db
     .select({
       role: authMembers.role,
+      expiresAt: authMembers.expiresAt,
       organizationId: authOrganizations.id,
       organizationName: authOrganizations.name,
     })
@@ -291,6 +294,34 @@ export async function getViewerTeamMembership(
     role: row.role as TeamRole,
     organizationId: row.organizationId,
     organizationName: row.organizationName,
+    expiresAt: row.expiresAt ?? null,
+  };
+}
+
+/**
+ * Resolve the deployment team membership (role + organization id) for a
+ * Better Auth identity in one indexed query. Null when the deployment has no
+ * team, the identity is not a member, or the membership is an expired
+ * reader seat — the single fail-closed gate that makes "到期自动失去访问"
+ * hold for every downstream consumer without a cron sweep.
+ */
+export async function getViewerTeamMembership(
+  db: FlareMoDb,
+  authUserId: string,
+): Promise<{
+  role: TeamRole;
+  organizationId: string;
+  organizationName: string;
+} | null> {
+  const state = await getMembershipState(db, authUserId);
+  if (!state) return null;
+  if (state.role === "reader" && state.expiresAt) {
+    if (state.expiresAt.getTime() <= Date.now()) return null;
+  }
+  return {
+    role: state.role,
+    organizationId: state.organizationId,
+    organizationName: state.organizationName,
   };
 }
 

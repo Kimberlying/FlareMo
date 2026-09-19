@@ -203,6 +203,20 @@ curl "$FLAREMO_URL/api/v1/memos" \
 
 旧的 `/api/v1/mcp` 是 FlareMo 既有 JSON-RPC MCP 子集，同样需要 cookie session 或 PAT；它继续保留给旧客户端。current Memos 风格的无状态 JSON Streamable HTTP MCP 位于根 `/mcp`，支持 `initialize`、`notifications/initialized`、`tools/list` 和 `tools/call`，但不承诺 SSE、有状态 session 或完整 method surface。
 
+### Cloudflare 资源用量面板（可选）
+
+Owner 用量面板除了应用内自测的向量用量，还可以展示 Cloudflare 官方口径的本实例资源用量（Workers 请求数、D1 存储与读/写行数、R2 存储与 Class A / B 操作）。数据来自 GraphQL Analytics API（`api.cloudflare.com/client/v4/graphql`），按本部署自己的 Worker 名、D1 database id、R2 bucket 过滤，共享账号下其他项目的用量不会被计入。
+
+启用只需一次性运行：
+
+```bash
+pnpm setup:usage
+```
+
+脚本会检测现有 secret、给出创建 API token 的指引（自定义 token 只需要 **Account → Account Analytics → Read** 一条权限）、写入 `FLAREMO_CF_ANALYTICS_TOKEN`、`FLAREMO_CF_ACCOUNT_ID`、`FLAREMO_CF_WORKER_NAME`、`FLAREMO_CF_D1_ID`、`FLAREMO_CF_R2_BUCKET` 五个 Worker secret，并当场验证 token 能读到 analytics。secret 配置一次即随实例永久生效，之后的部署无需重复任何步骤；`--reset` 可只重新录入 token。
+
+Token 权限是账号级的（Cloudflare 不支持更细的 analytics 读取范围），但面板查询始终按资源 id 过滤。不配置 token 时该区块整体隐藏，应用其余功能不受影响。R2 存储指标约有 24 小时延迟；「本月」按 UTC 自然月对齐 Cloudflare 计费周期；最终计费以 Cloudflare Dashboard 为准。
+
 ## Cloudflare Access（可选外层防线）
 
 第一轮生产发布建议保留 Access，作为迁移期和纵深防御边界。Access 的职责是保护网络入口，不取代 Better Auth：

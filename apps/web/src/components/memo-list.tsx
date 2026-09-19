@@ -38,7 +38,8 @@ type MemoListProps = {
   onClearFilters?: () => void;
   onArchive: (id: string) => void;
   onPin: (id: string, pinned: boolean) => void;
-  onShare: (id: string) => void;
+  /** Creates (or reuses) the memo's public share and resolves with it. */
+  onShare: (id: string) => Promise<Share>;
   /** Tear down the public link after a memo leaves "public". */
   onRevokeShare?: (share: Share) => void;
   onUpdate: (

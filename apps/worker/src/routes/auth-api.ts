@@ -29,7 +29,7 @@ import {
 import { resolveCaptchaConfig, verifyCaptchaRequest } from "../captcha";
 import type { HonoBindings } from "../context";
 import {
-  resolveEmailConfig,
+  resolveEmailSendConfig,
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "../email";
@@ -82,7 +82,8 @@ authApi.get("/register/status", async (c) => {
   return c.json({
     registration_open: await getUserRegistrationAllowed(db),
     initialized: status.initialized,
-    email_verification_required: resolveEmailConfig(c.env).provider !== "none",
+    email_verification_required:
+      (await resolveEmailSendConfig(c.env, db)).provider !== "none",
     captcha: {
       provider: captcha.provider,
       site_key: captcha.siteKey,
@@ -158,9 +159,9 @@ authApi.post("/register", zValidator("json", registerSchema), async (c) => {
     // When a transactional-email provider is configured, registration is not
     // complete until the address is verified; the account can still sign in
     // but the UI prompts for verification.
-    if (resolveEmailConfig(c.env).provider !== "none") {
+    if ((await resolveEmailSendConfig(c.env, db)).provider !== "none") {
       const token = await auth.createEmailVerificationToken(result.user.id);
-      const sent = await sendVerificationEmail(c.env, {
+      const sent = await sendVerificationEmail(c.env, db, {
         to: email,
         token,
         publicUrl: getPublicUrl(c.env),
@@ -215,13 +216,13 @@ authApi.post(
   async (c) => {
     const throttled = await rateLimitGuard(c, "email");
     if (throttled) return throttled;
-    if (resolveEmailConfig(c.env).provider === "none") {
+    const db = createDb(c.env.DB);
+    if ((await resolveEmailSendConfig(c.env, db)).provider === "none") {
       return c.json(
         { error: { message: "Email verification is not enabled." } },
         400,
       );
     }
-    const db = createDb(c.env.DB);
     let auth: ReturnType<typeof createFlareMoAuth>;
     try {
       auth = createFlareMoAuth(c.env, db);
@@ -240,7 +241,7 @@ authApi.post(
         return c.json({ ok: true });
       }
       const token = await auth.createEmailVerificationToken(user.id);
-      const sent = await sendVerificationEmail(c.env, {
+      const sent = await sendVerificationEmail(c.env, db, {
         to: user.email,
         token,
         publicUrl: getPublicUrl(c.env),
@@ -265,13 +266,13 @@ authApi.post(
   async (c) => {
     const throttled = await rateLimitGuard(c, "email");
     if (throttled) return throttled;
-    if (resolveEmailConfig(c.env).provider === "none") {
+    const db = createDb(c.env.DB);
+    if ((await resolveEmailSendConfig(c.env, db)).provider === "none") {
       return c.json(
         { error: { message: "Password reset email is not configured." } },
         400,
       );
     }
-    const db = createDb(c.env.DB);
     let auth: ReturnType<typeof createFlareMoAuth>;
     try {
       auth = createFlareMoAuth(c.env, db);
@@ -290,7 +291,7 @@ authApi.post(
         return c.json({ ok: true });
       }
       const token = await auth.createPasswordResetToken(user.id);
-      const sent = await sendPasswordResetEmail(c.env, {
+      const sent = await sendPasswordResetEmail(c.env, db, {
         to: user.email,
         token,
         publicUrl: getPublicUrl(c.env),

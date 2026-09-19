@@ -47,6 +47,7 @@ export const LazyMemoContent = memo(function LazyMemoContent({
   resolveImageDimensions,
   onToggleTask,
   onConvertTask,
+  rehypePlugins,
 }: {
   className?: string;
   content: string;
@@ -59,6 +60,8 @@ export const LazyMemoContent = memo(function LazyMemoContent({
   /** D2: live GFM checkboxes in the read view; see MemoContent. */
   onToggleTask?: (lineIndex: number, checked: boolean) => void;
   onConvertTask?: (lineIndex: number, text: string) => void;
+  /** Article-surface extras (Shiki); see MemoContent. */
+  rehypePlugins?: import("unified").Pluggable[];
 }) {
   return (
     <MemoContentErrorBoundary
@@ -72,6 +75,7 @@ export const LazyMemoContent = memo(function LazyMemoContent({
           content={content}
           interactiveTaskLists={interactiveTaskLists}
           onTimestampClick={onTimestampClick}
+          rehypePlugins={rehypePlugins}
           resolveImageDimensions={resolveImageDimensions}
           withHeadingIds={withHeadingIds}
           onToggleTask={onToggleTask}

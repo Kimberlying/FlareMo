@@ -7,9 +7,12 @@ import {
   ChevronRightIcon,
   CircleIcon,
   DownloadIcon,
+  EyeIcon,
   ListTodoIcon,
   MenuIcon,
-  SettingsIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  SearchIcon,
   SparklesIcon,
   UploadIcon,
   XIcon,
@@ -44,9 +47,12 @@ import { FlareMoExplorer } from "@/components/flaremo-explorer";
 import { InfoTip } from "@/components/info-tip";
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { MemoList } from "@/components/memo-list";
-import { NotificationBell } from "@/components/notification-bell";
 import { PwaUpdatePrompt } from "@/components/pwa-update-prompt";
 import { ScopeSwitcher } from "@/components/scope-switcher";
+import {
+  SpotlightSearch,
+  SpotlightSearchTrigger,
+} from "@/components/spotlight-search";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,7 +68,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { UpdateStatus } from "@/components/update-status";
+import { UserMenu } from "@/components/user-menu";
 import { WorkspaceComposer } from "@/components/workspace-composer";
 import { WorkspaceSearch } from "@/components/workspace-search";
 import { useDataTransfer } from "@/hooks/use-data-transfer";
@@ -89,6 +95,8 @@ import { AppRoutes } from "@/router-tree";
 import { indexRoute, registerWorkspaceComponent } from "@/routes/index-route";
 
 const PAGE_SIZE = 30;
+// Persisted so a collapsed desktop sidebar stays collapsed across reloads.
+const SIDEBAR_COLLAPSED_KEY = "flaremo.sidebar.collapsed";
 const EMPTY_STATS: MemoStatsResponse = {
   counts: { normal: 0, archived: 0, trashed: 0, total: 0 },
   active_days: 0,
@@ -185,12 +193,30 @@ export function FlareMoApp() {
   const [timeZone] = useState(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   );
-  const desktopSearchRef = useRef<HTMLInputElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
   const [isTimelineScrolled, setIsTimelineScrolled] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [shortcutsOpen, setShowShortcutsOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        // Persistence is best-effort; the in-memory choice still applies.
+      }
+      return next;
+    });
+  }, []);
   const searchQuery = query.trim();
   const isSearching = Boolean(searchQuery);
   const [semanticMode, setSemanticMode] = useState(false);
@@ -256,10 +282,6 @@ export function FlareMoApp() {
   }, [keywordSearch, taskSearchQuery.data, searchQuery]);
 
   useEffect(() => {
-    const focusSearch = () => {
-      const desktop = window.matchMedia("(min-width: 768px)").matches;
-      (desktop ? desktopSearchRef : mobileSearchRef).current?.focus();
-    };
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target;
       const editable =
@@ -275,12 +297,12 @@ export function FlareMoApp() {
         event.key.toLocaleLowerCase() === "k"
       ) {
         event.preventDefault();
-        focusSearch();
+        setSpotlightOpen(true);
         return;
       }
       if (event.key === "/" && !editable && !modalOpen) {
         event.preventDefault();
-        focusSearch();
+        setSpotlightOpen(true);
         return;
       }
       // "c" jumps straight into the composer for quick capture.
@@ -351,6 +373,11 @@ export function FlareMoApp() {
     staleTime: 30_000,
     retry: false,
   });
+  // Readers (time-boxed read-only seats) browse the team space but never
+  // publish into it; their composer target stays personal everywhere.
+  const isReader = currentUserQuery.data?.role === "reader";
+  const canPublishTeam = Boolean(currentUserQuery.data?.team) && !isReader;
+  const teamExpired = Boolean(currentUserQuery.data?.team_expired);
   // "On this day" teaser for the timeline top: notes from past years dated
   // today. The query shares the daily-review page's cache entry, so landing
   // on the banner costs nothing extra.
@@ -411,7 +438,7 @@ export function FlareMoApp() {
   const { mutate: updateMemo, mutateAsync: updateMemoAsync } = updateMutation;
   const { mutate: trashMemo } = trashMutation;
   const { mutate: restoreMemo } = restoreMutation;
-  const { mutate: shareMemo } = shareMutation;
+  const { mutateAsync: shareMemo } = shareMutation;
   const { mutateAsync: hardDeleteMemo } = hardDeleteMutation;
   const handleArchive = useCallback(
     (id: string) => {
@@ -465,26 +492,36 @@ export function FlareMoApp() {
     : memosQuery.isFetching && !memosQuery.isFetchingNextPage;
   const hasFilters = Boolean(query.trim() || activeTag || untagged);
 
-  const renderExplorer = (importInputId: string, onNavigate?: () => void) => (
+  const renderExplorer = (
+    importInputId: string,
+    {
+      onNavigate,
+      showCollapse = false,
+    }: { onNavigate?: () => void; showCollapse?: boolean } = {},
+  ) => (
     <FlareMoExplorer
       activeTag={activeTag}
+      header={
+        <UserMenu
+          onOpenSettings={() => {
+            onNavigate?.();
+            setAccountSettingsOpen(true);
+          }}
+          user={currentUserQuery.data}
+        />
+      }
       headerAction={
-        <div className="mr-8 flex items-center gap-1 lg:mr-0">
-          <NotificationBell />
-          <UpdateStatus />
+        showCollapse ? (
           <Button
-            onClick={() => {
-              onNavigate?.();
-              setAccountSettingsOpen(true);
-            }}
-            title={t("auth.accountTitle")}
-            aria-label={t("auth.accountTitle")}
+            aria-label={t("sidebar.collapse")}
             size="icon-sm"
+            title={t("sidebar.collapse")}
             variant="ghost"
+            onClick={toggleSidebarCollapsed}
           >
-            <SettingsIcon />
+            <PanelLeftCloseIcon />
           </Button>
-        </div>
+        ) : undefined
       }
       footer={
         <div className="flex items-center gap-1 text-muted-foreground">
@@ -557,8 +594,15 @@ export function FlareMoApp() {
   return (
     <div className="h-svh overflow-hidden bg-background">
       <div className="mx-auto flex h-full w-full max-w-[950px]">
-        <div className="no-scrollbar hidden h-full w-[312px] shrink-0 overflow-y-auto border-r bg-background lg:block">
-          {renderExplorer("flaremo-import-file-desktop")}
+        <div
+          className={cn(
+            "no-scrollbar h-full w-[312px] shrink-0 overflow-y-auto border-r bg-background",
+            sidebarCollapsed ? "hidden" : "hidden lg:block",
+          )}
+        >
+          {renderExplorer("flaremo-import-file-desktop", {
+            showCollapse: true,
+          })}
         </div>
         <div className="flex h-full min-w-0 flex-1 flex-col">
           <header
@@ -569,7 +613,24 @@ export function FlareMoApp() {
                 : "border-transparent",
             )}
           >
-            <div className="flex h-14 items-center gap-2 px-5 lg:px-3">
+            <div
+              className={cn(
+                "flex h-14 items-center gap-2 px-5 lg:px-3",
+                sidebarCollapsed && "mx-auto w-full max-w-[640px]",
+              )}
+            >
+              {sidebarCollapsed && (
+                <Button
+                  aria-label={t("sidebar.expand")}
+                  className="hidden lg:inline-flex"
+                  size="icon-sm"
+                  title={t("sidebar.expand")}
+                  variant="ghost"
+                  onClick={toggleSidebarCollapsed}
+                >
+                  <PanelLeftOpenIcon />
+                </Button>
+              )}
               <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
                 <SheetTrigger
                   render={
@@ -594,9 +655,9 @@ export function FlareMoApp() {
                     className="no-scrollbar h-full overflow-y-auto overscroll-contain"
                     data-testid="mobile-sidebar-scroll"
                   >
-                    {renderExplorer("flaremo-import-file-mobile", () =>
-                      setMobileSheetOpen(false),
-                    )}
+                    {renderExplorer("flaremo-import-file-mobile", {
+                      onNavigate: () => setMobileSheetOpen(false),
+                    })}
                   </div>
                 </SheetContent>
               </Sheet>
@@ -609,16 +670,23 @@ export function FlareMoApp() {
                   onViewChange={setView}
                 />
               </div>
-              <WorkspaceSearch
-                className="hidden w-[280px] min-w-0 shrink md:block"
-                inputRef={desktopSearchRef}
-                onToggleSemantic={semanticEnabled ? toggleSemantic : undefined}
-                query={dayFilter ? "" : query}
-                semanticMode={semanticMode}
-                semanticPending={vectorUsageQuery.isPending}
-                onQueryChange={setQuery}
-                isPending={isUpdating}
-              />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <SpotlightSearchTrigger
+                  className="hidden md:flex"
+                  onClick={() => setSpotlightOpen(true)}
+                  activeQuery={dayFilter ? "" : query}
+                  onClear={() => setQuery("")}
+                />
+                <Button
+                  aria-label={t("common.search")}
+                  className="md:hidden"
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => setSpotlightOpen(true)}
+                >
+                  <SearchIcon />
+                </Button>
+              </div>
             </div>
           </header>
           <main
@@ -641,11 +709,23 @@ export function FlareMoApp() {
               isPending={isUpdating}
             />
             <div className="flex flex-col gap-3">
+              {teamExpired && (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground motion-safe:animate-rise">
+                  <EyeIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                  {t("space.expiredNotice")}
+                </div>
+              )}
+              {isReader && space === "team" && (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground motion-safe:animate-rise">
+                  <EyeIcon aria-hidden="true" className="size-3.5 shrink-0" />
+                  {t("space.readonlyNotice")}
+                </div>
+              )}
               <WorkspaceComposer
-                visible={view === "all"}
+                visible={view === "all" && !(isReader && space === "team")}
                 composeRequested={composeRequested}
                 space={space}
-                hasTeam={Boolean(currentUserQuery.data?.team)}
+                hasTeam={canPublishTeam}
                 tags={stats.tags}
                 captureAvailable={Boolean(captureStatusQuery.data?.available)}
               />
@@ -864,6 +944,19 @@ export function FlareMoApp() {
           />
         )}
       </Suspense>
+      <SpotlightSearch
+        open={spotlightOpen}
+        onOpenChange={setSpotlightOpen}
+        query={dayFilter ? "" : query}
+        onQueryChange={setQuery}
+        onNewMemo={focusComposerInput}
+        tasks={taskSearchQuery.data?.tasks ?? []}
+        memos={displayedMemos}
+        semanticMode={semanticMode}
+        onToggleSemantic={semanticEnabled ? toggleSemantic : undefined}
+        semanticPending={vectorUsageQuery.isPending}
+        isSearching={isUpdating}
+      />
       <Dialog open={shortcutsOpen} onOpenChange={setShowShortcutsOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

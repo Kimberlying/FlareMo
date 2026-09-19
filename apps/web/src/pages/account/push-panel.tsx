@@ -1,17 +1,13 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { BellRingIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { getPushConfig, subscribeToPush, unsubscribeFromPush } from "@/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/i18n";
 import { errorMessage } from "@/lib/error";
+import { SettingsRow, SettingsSectionGroup } from "./apple-settings-ui";
 
-/**
- * Web Push opt-in for proactive reminders (daily review, overdue tasks).
- * Requires Notification permission plus a browser PushManager; the server
- * only accepts subscriptions when both VAPID keys are configured.
- */
 export function PushPanel() {
   const { t } = useI18n();
   const configQuery = useQuery({
@@ -89,37 +85,41 @@ export function PushPanel() {
   if (!supported) return null;
   const enabled = (configQuery.data?.subscriptions ?? 0) > 0;
   const configured = Boolean(configQuery.data?.public_key);
+  const isPending =
+    subscribeMutation.isPending || unsubscribeMutation.isPending;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("push.title")}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <p className="text-xs text-muted-foreground">{t("push.description")}</p>
-        {!configured ? (
-          <p className="text-xs text-muted-foreground">
-            {t("push.notConfigured")}
-          </p>
-        ) : (
-          <Button
-            disabled={
-              subscribeMutation.isPending || unsubscribeMutation.isPending
-            }
-            size="sm"
-            type="button"
-            variant={enabled ? "outline" : "default"}
-            onClick={() =>
-              enabled
-                ? unsubscribeMutation.mutate()
-                : subscribeMutation.mutate()
-            }
-          >
-            {enabled ? t("push.disable") : t("push.enable")}
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-5">
+      <SettingsSectionGroup
+        title={t("push.title")}
+        footer={t("push.description")}
+      >
+        <SettingsRow
+          icon={BellRingIcon}
+          label={t("push.title")}
+          description={
+            !configured
+              ? t("push.notConfigured")
+              : enabled
+                ? t("settings.status.configured")
+                : t("settings.status.notConfigured")
+          }
+          action={
+            <Switch
+              checked={enabled}
+              disabled={!configured || isPending}
+              onCheckedChange={(val) => {
+                if (val) {
+                  subscribeMutation.mutate();
+                } else {
+                  unsubscribeMutation.mutate();
+                }
+              }}
+            />
+          }
+        />
+      </SettingsSectionGroup>
+    </div>
   );
 }
 

@@ -1,5 +1,6 @@
 export function createResourceId(
   prefix:
+    | "articles"
     | "attachments"
     | "memos"
     | "memories"
@@ -14,6 +15,7 @@ export function createResourceId(
 export function parseResourceName(
   name: string,
   prefix:
+    | "articles"
     | "attachments"
     | "memos"
     | "memories"

@@ -12,6 +12,7 @@ import type {
 } from "@flaremo/contracts";
 import { apiRequest } from "./client";
 import type {
+  CloudflareUsageReport,
   CreateMemoRequest,
   ListMemoParams,
   Memo,
@@ -59,6 +60,10 @@ export async function semanticSearchMemos(
 
 export async function getVectorUsage() {
   return apiRequest<VectorUsageReport>("/api/app/usage/vector");
+}
+
+export async function getCloudflareUsage() {
+  return apiRequest<CloudflareUsageReport>("/api/app/usage/cloudflare");
 }
 
 export async function getTagHierarchy(space?: MemoSpace) {

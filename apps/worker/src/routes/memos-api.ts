@@ -358,6 +358,9 @@ memosApi.post("/attachments", async (c) => {
     const formData = await c.req.formData();
     const file = formData.get("file");
     const memo = formData.get("memo");
+    // Article-editor uploads bind to the article draft that owns the
+    // editing session (same lifecycle contract as `memo`).
+    const article = formData.get("article");
     const clientId = normalizeAttachmentClientId(formData.get("client_id"));
     // Both parsers are decoration-not-contract: absent or invalid fields
     // simply leave the payload keys out.
@@ -397,6 +400,7 @@ memosApi.post("/attachments", async (c) => {
     try {
       const attachment = await createAttachmentMetadata(db, user, {
         memoId: typeof memo === "string" && memo ? memo : null,
+        articleId: typeof article === "string" && article ? article : null,
         filename: file.name,
         contentType: file.type || "application/octet-stream",
         size: file.size,

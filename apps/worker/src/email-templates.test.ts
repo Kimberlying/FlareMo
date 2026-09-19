@@ -103,7 +103,11 @@ describe("localized sends", () => {
 
   it("renders the Japanese reset email when requested in Japanese", async () => {
     const { env, sent } = envWithBinding();
-    const ok = await sendPasswordResetEmail(env, baseInput("ja,en;q=0.5"));
+    const ok = await sendPasswordResetEmail(
+      env,
+      {} as never,
+      baseInput("ja,en;q=0.5"),
+    );
     expect(ok).toBe(true);
     expect(sent).toHaveLength(1);
     expect(sent[0].subject).toBe(emailCopy("ja").resetPassword.subject);
@@ -113,7 +117,11 @@ describe("localized sends", () => {
 
   it("renders the Arabic change-email HTML right-to-left", async () => {
     const { env, sent } = envWithBinding();
-    const ok = await sendEmailChangeVerificationEmail(env, baseInput("ar"));
+    const ok = await sendEmailChangeVerificationEmail(
+      env,
+      {} as never,
+      baseInput("ar"),
+    );
     expect(ok).toBe(true);
     expect(sent[0].html).toContain('dir="rtl"');
     expect(sent[0].html).toContain(emailCopy("ar").changeEmail.body);
@@ -121,14 +129,22 @@ describe("localized sends", () => {
 
   it("keeps the zh-CN verification email when requested in Chinese", async () => {
     const { env, sent } = envWithBinding();
-    const ok = await sendVerificationEmail(env, baseInput("zh-CN,zh;q=0.9"));
+    const ok = await sendVerificationEmail(
+      env,
+      {} as never,
+      baseInput("zh-CN,zh;q=0.9"),
+    );
     expect(ok).toBe(true);
     expect(sent[0].subject).toBe(emailCopy("zh-CN").verifyEmail.subject);
   });
 
   it("falls back to English copy for unmatched languages", async () => {
     const { env, sent } = envWithBinding();
-    const ok = await sendVerificationEmail(env, baseInput("de-DE"));
+    const ok = await sendVerificationEmail(
+      env,
+      {} as never,
+      baseInput("de-DE"),
+    );
     expect(ok).toBe(true);
     expect(sent[0].subject).toBe(emailCopy("en-US").verifyEmail.subject);
   });

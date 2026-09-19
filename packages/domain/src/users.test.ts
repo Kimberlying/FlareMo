@@ -21,6 +21,8 @@ import {
   finalizeFlaremoMemberRemoval,
   getDefaultTeam,
   getFlaremoUserById,
+  grantTeamReader,
+  revokeTeamReader,
   updateFlaremoUserEmail,
   updateTeamMemberRole,
 } from "./users";
@@ -152,6 +154,56 @@ describe("team users", () => {
       source: "web",
     });
     expect(personalMemo.teamId).toBeNull();
+  });
+
+  it("denies team publishing for readers but keeps personal notes working", async () => {
+    const member = await createMember("Reader");
+    await grantTeamReader(db, {
+      authUserId: member.authUserId,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    const membership = await getViewerTeamMembership(db, member.authUserId);
+    expect(membership).toMatchObject({ role: "reader" });
+    const reader = { ...member.viewer, teamRole: "reader" as const };
+
+    await expect(
+      createMemo(db, reader, {
+        content: "team",
+        visibility: "protected",
+        source: "web",
+      }),
+    ).rejects.toThrow(ForbiddenError);
+    // Personal notes stay fully available to the read-only seat.
+    const personal = await createMemo(db, reader, {
+      content: "personal",
+      visibility: "private",
+      source: "web",
+    });
+    expect(personal.teamId).toBeNull();
+  });
+
+  it("cuts off access automatically when the reader seat expires", async () => {
+    const member = await createMember("Lapsed");
+    // Grant, then lapse: the past-dated expiry folds the membership out at
+    // the single fail-closed gate (getViewerTeamMembership) — no cron needed.
+    await grantTeamReader(db, {
+      authUserId: member.authUserId,
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    expect(await getViewerTeamMembership(db, member.authUserId)).toBeNull();
+
+    // Renewal from the admin restores access immediately.
+    await grantTeamReader(db, {
+      authUserId: member.authUserId,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    expect(await getViewerTeamMembership(db, member.authUserId)).toMatchObject({
+      role: "reader",
+    });
+
+    // Revocation removes the membership row entirely.
+    await revokeTeamReader(db, member.authUserId);
+    expect(await getViewerTeamMembership(db, member.authUserId)).toBeNull();
   });
 
   it("removes private data and adopts team content into the owner account", async () => {

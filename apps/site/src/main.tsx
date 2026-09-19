@@ -2,6 +2,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { createAppRouter } from "@/router";
+// Both faces are named in --font-sans/--font-display (tokens.css); without
+// these imports the stacks would silently fall through to system fonts.
+import "@fontsource-variable/geist";
 import "@fontsource-variable/noto-sans-arabic";
 import "@/styles/tokens.css";
 

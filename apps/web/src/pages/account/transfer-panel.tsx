@@ -1,12 +1,12 @@
 import type { DataTaskDto } from "@flaremo/contracts";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { DownloadIcon, RefreshCcwIcon } from "lucide-react";
+import { DownloadIcon, Loader2Icon, RefreshCcwIcon } from "lucide-react";
 import { downloadExportJson } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TranslationKey } from "@/i18n";
+import { SettingsSectionGroup } from "./apple-settings-ui";
 
 type TransferPanelProps = {
   createExportIsPending: boolean;
@@ -26,108 +26,140 @@ export function TransferPanel({
   onRetryExport,
 }: TransferPanelProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <CardTitle>{t("transfer.title")}</CardTitle>
-        <Button
-          disabled={createExportIsPending}
-          size="sm"
-          type="button"
-          variant="outline"
-          onClick={onCreateExport}
-        >
-          <DownloadIcon data-icon="inline-start" />
-          {t("transfer.newExport")}
-        </Button>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {dataTasksQuery.isLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : dataTasksQuery.isError ? (
-          <p className="text-sm text-destructive">{t("transfer.loadFailed")}</p>
-        ) : dataTasksQuery.data?.tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("transfer.empty")}</p>
-        ) : (
-          dataTasksQuery.data?.tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
+    <div className="flex flex-col gap-5">
+      <SettingsSectionGroup
+        title={
+          <div className="flex items-center justify-between">
+            <span>{t("transfer.title")}</span>
+            <Button
+              disabled={createExportIsPending}
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={onCreateExport}
             >
-              <div className="min-w-0">
-                <p className="font-medium">
-                  {task.kind === "export"
-                    ? t("transfer.export")
-                    : t("transfer.import")}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {task.phase}
-                </p>
-                {task.status === "failed" && task.error_message && (
-                  <p className="mt-1 line-clamp-2 text-xs text-destructive">
-                    {task.error_message}
-                  </p>
-                )}
-                {task.progress_total > 0 && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary transition-[width]"
-                        style={{
-                          width: `${Math.min(100, Math.round((task.progress_done / task.progress_total) * 100))}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      {task.progress_done}/{task.progress_total}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <Badge
-                variant={
-                  task.status === "succeeded"
-                    ? "secondary"
-                    : task.status === "failed"
-                      ? "destructive"
-                      : "outline"
-                }
+              {createExportIsPending ? (
+                <Loader2Icon
+                  className="animate-spin size-3.5"
+                  data-icon="inline-start"
+                />
+              ) : (
+                <DownloadIcon className="size-3.5" data-icon="inline-start" />
+              )}
+              {t("transfer.newExport")}
+            </Button>
+          </div>
+        }
+      >
+        {dataTasksQuery.isLoading ? (
+          <div className="p-4">
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : dataTasksQuery.isError ? (
+          <div className="p-4 text-sm text-destructive">
+            {t("transfer.loadFailed")}
+          </div>
+        ) : dataTasksQuery.data?.tasks.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            {t("transfer.empty")}
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-border/40">
+            {dataTasksQuery.data?.tasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center justify-between gap-3 px-3.5 py-3 transition-colors hover:bg-accent/20"
               >
-                {task.status}
-              </Badge>
-              {task.status === "succeeded" && task.kind === "export" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    void downloadExportJson(task.id).then((blob) => {
-                      const url = URL.createObjectURL(blob);
-                      const anchor = document.createElement("a");
-                      anchor.href = url;
-                      anchor.download = `flaremo-export-${task.id}.json`;
-                      anchor.click();
-                      setTimeout(() => URL.revokeObjectURL(url), 1000);
-                    })
-                  }
-                >
-                  <DownloadIcon data-icon="inline-start" />
-                  {t("transfer.download")}
-                </Button>
-              )}
-              {task.status === "failed" && task.kind === "export" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={retryExportIsPending}
-                  onClick={onRetryExport}
-                >
-                  <RefreshCcwIcon data-icon="inline-start" />
-                  {t("transfer.retry")}
-                </Button>
-              )}
-            </div>
-          ))
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">
+                      {task.kind === "export"
+                        ? t("transfer.export")
+                        : t("transfer.import")}
+                    </p>
+                    <Badge
+                      variant={
+                        task.status === "succeeded"
+                          ? "secondary"
+                          : task.status === "failed"
+                            ? "destructive"
+                            : "outline"
+                      }
+                      className="text-[10px] h-4 px-1.5"
+                    >
+                      {task.status}
+                    </Badge>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground mt-0.5">
+                    {task.phase}
+                  </p>
+                  {task.status === "failed" && task.error_message && (
+                    <p className="mt-1 line-clamp-2 text-xs text-destructive">
+                      {task.error_message}
+                    </p>
+                  )}
+                  {task.progress_total > 0 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-[width]"
+                          style={{
+                            width: `${Math.min(100, Math.round((task.progress_done / task.progress_total) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">
+                        {task.progress_done}/{task.progress_total}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                  {task.status === "succeeded" && task.kind === "export" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() =>
+                        void downloadExportJson(task.id).then((blob) => {
+                          const url = URL.createObjectURL(blob);
+                          const anchor = document.createElement("a");
+                          anchor.href = url;
+                          anchor.download = `flaremo-export-${task.id}.json`;
+                          anchor.click();
+                          setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        })
+                      }
+                    >
+                      <DownloadIcon
+                        data-icon="inline-start"
+                        className="size-3.5"
+                      />
+                      {t("transfer.download")}
+                    </Button>
+                  )}
+                  {task.status === "failed" && task.kind === "export" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      disabled={retryExportIsPending}
+                      onClick={onRetryExport}
+                    >
+                      <RefreshCcwIcon
+                        data-icon="inline-start"
+                        className="size-3.5"
+                      />
+                      {t("transfer.retry")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </SettingsSectionGroup>
+    </div>
   );
 }

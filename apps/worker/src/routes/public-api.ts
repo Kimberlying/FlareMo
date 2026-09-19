@@ -1,5 +1,9 @@
 import { createDb } from "@flaremo/db";
-import { getAttachmentById, getPublicShareByToken } from "@flaremo/domain";
+import {
+  getAttachmentById,
+  getPublicArticleAttachment,
+  getPublicShareByToken,
+} from "@flaremo/domain";
 import { attachmentToDto, memoToDto, shareToDto } from "@flaremo/memos";
 import { Hono } from "hono";
 import { attachmentObjectResponse } from "../attachment-http";
@@ -49,6 +53,32 @@ publicApi.get("/shares/:token/attachments/:id/blob", async (c) => {
       return c.json({ error: { message: "Attachment not found" } }, 404);
     }
 
+    const response = await attachmentObjectResponse({
+      attachment,
+      bucket: c.env.ATTACHMENTS,
+      cacheControl: "public, max-age=3600",
+      inlineRequested: c.req.query("preview") === "1",
+      request: c.req.raw,
+    });
+    if (!response) {
+      return c.json({ error: { message: "Attachment object not found" } }, 404);
+    }
+    return response;
+  } catch (error) {
+    return jsonError(c, error);
+  }
+});
+
+// Article public blob: binding to the *published* article is the access
+// check (mirrors the share-token contract; anonymous + cacheable).
+publicApi.get("/articles/:slug/attachments/:id/blob", async (c) => {
+  try {
+    const db = createDb(c.env.DB);
+    const { attachment } = await getPublicArticleAttachment(
+      db,
+      c.req.param("slug"),
+      c.req.param("id"),
+    );
     const response = await attachmentObjectResponse({
       attachment,
       bucket: c.env.ATTACHMENTS,

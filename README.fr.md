@@ -82,6 +82,7 @@ La réponse est oui :
   - 👥 **Équipe** : Lecture partagée avec les membres actifs.
   - 🌐 **Public** : Partage public révocable avec contrôle d'expiration.
 - **Départ sécurisé** : Suppression physique et vérifiée des notes privées lors du retrait d'un membre.
+- **Sièges lecteurs** : Attribuez un siège en lecture seule à durée limitée — lecteurs invités, cohortes de cours, livraisons client. Expiration automatique (fail-closed à la résolution du jeton, sans cron). Gérez-les depuis la page membres, ou provisionnez par e-mail via `PUT /api/app/admin/team/reader` avec un jeton d'accès personnel (voir `docs/team-mode.md`).
 
 ### 6. Mode hors-ligne & Expérience PWA
 - **PWA installable** : Installez FlareMo sur bureau ou smartphone pour une sensation d'application native.
@@ -98,6 +99,13 @@ La réponse est oui :
 - **Import / Export sans perte** : Importez vos archives Memos et flomo en un clic.
 
 ---
+
+### 9. Système d'extensions : les cartes sont des extensions
+- **Cinq cartes incluses** : Blanc, Citation du jour, Ticket, Carte postale, plus un Cachet dessiné au canvas.
+- **Boutique et gestion** : dans les réglages — parcourir les répertoires, installation en un clic (vérification SHA-256), activation/désactivation, ordre, carte par défaut, masquage. Le répertoire officiel : [flaremo.app/plugins](https://flaremo.app/plugins/registry.json).
+- **Importez les vôtres** : un administrateur peut installer un paquet local — il n'existe que sur cette instance et n'est jamais transmis.
+- **Outils d'auteur** : `pnpm plugin:new` génère un squelette, `pnpm plugin:check` valide avec **exactement les règles appliquées à l'installation**, `pnpm plugins:build` empaquette. Les cartes document sont de pures mises en page JSON ; les cartes sandbox exécutent votre HTML/CSS/JS. Voir le [guide des extensions](./docs/plugins.md).
+- **Sûr par défaut** : les cartes s'exécutent dans un bac à sable à origine opaque, **sans aucun accès réseau** ; les paquets communautaires et de marque restent désactivés jusqu'à validation par un administrateur.
 
 ## 📊 La générosité du niveau gratuit Cloudflare
 

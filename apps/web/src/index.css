@@ -15,18 +15,29 @@
  */
 
 @theme inline {
-    /* Aligned with the KOSX type stack (impact.kosx.ai): Helvetica covers
-       Latin on macOS; CJK falls through to the system Han fonts. */
+    /* Latin runs on the bundled Geist Variable (small, ~tens of KB) so the
+       brand face is identical everywhere. CJK deliberately stays on platform
+       system fonts (zero CJK bytes shipped); that list is language-scoped in
+       --font-cjk below so Japanese and Korean keep their own glyph forms.
+       Noto Sans Arabic comes last of the named faces on purpose: its math and
+       symbols subsets also cover ① ★ → (traditional CJK glyphs), so the Han
+       faces must get first pick, while Arabic still lands on the bundled font
+       wherever the platform ships none. MiSans / HarmonyOS Sans are name
+       references only — their licenses forbid bundling them into this repo. */
     --font-heading:
-        "Helvetica Neue", "Noto Sans Arabic Variable", "PingFang SC",
-        "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", Arial,
-        system-ui, sans-serif;
+        "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        var(--font-cjk), "Noto Sans Arabic Variable", system-ui, sans-serif;
     --font-sans:
-        "Helvetica Neue", "Noto Sans Arabic Variable", "PingFang SC",
-        "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", Arial,
-        system-ui, sans-serif;
+        "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        var(--font-cjk), "Noto Sans Arabic Variable", system-ui, sans-serif;
     --font-mono:
         ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    /* Fourth tier, exposed to share-card plugins as `family: "serif"`. Latin
+       keeps Georgia — present on every desktop, so an exported card rasterizes
+       the same everywhere — and the Han side is script-scoped below for the
+       same reason as --font-cjk. */
+    --font-serif:
+        Georgia, "Times New Roman", var(--font-cjk-serif), serif;
 
     /* Brand ramp (default = flame; presets override --brand-* under
        [data-accent] set by BrandingProvider). .dark remaps the tokens below. */
@@ -155,6 +166,16 @@
     --shadow-lg:
         0 12px 32px -8px oklch(0.30 0.02 60 / 0.14),
         0 4px 8px -4px oklch(0.30 0.02 60 / 0.06);
+
+    /* Liquid Glass material (docs/liquid-glass-design.md). Neutral by design:
+       [data-accent] presets never tint the glass, so the accent matrix stays
+       8 presets x 2 themes regardless of the material. */
+    --glass-blur: 18px;
+    --glass-saturate: 1.7;
+    --glass-tint: oklch(1 0 0 / 0.62);
+    --glass-rim: oklch(1 0 0 / 0.9);
+    --glass-edge: oklch(1 0 0 / 0.28);
+    --glass-shadow: oklch(0.2 0.02 60 / 0.16);
 }
 
 .dark {
@@ -190,6 +211,12 @@
     --shadow-sm: 0 0 0 transparent;
     --shadow-md: 0 0 0 transparent;
     --shadow-lg: 0 0 0 transparent;
+    /* Dark hierarchy comes from tint depth, not shadows — same rule as the
+       shadow tokens above. */
+    --glass-tint: oklch(0.22 0.012 60 / 0.55);
+    --glass-rim: oklch(1 0 0 / 0.24);
+    --glass-edge: oklch(1 0 0 / 0.08);
+    --glass-shadow: transparent;
 }
 
 /* Accent presets, derived from Radix Colors v3 (single shared ramp per preset;
@@ -309,6 +336,41 @@
   html {
     @apply font-sans;
     }
+  /* CJK fallback list, keyed off the document language that I18nProvider
+     writes to <html lang>. Font matching walks the family list per character,
+     so a single shared list would hand Japanese kana/kanji to PingFang SC and
+     render them with Chinese glyph forms; scoping by :lang() keeps each
+     script on its own system face (and Korean off a last-resort fallback). */
+  :root {
+    --font-cjk: "PingFang SC", "Hiragino Sans GB", MiSans,
+      "HarmonyOS Sans SC", "Microsoft YaHei", "Noto Sans CJK SC",
+      "Noto Sans SC";
+    }
+  :root:lang(ja) {
+    --font-cjk: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+      "Yu Gothic", Meiryo, "Noto Sans JP", "Noto Sans CJK JP", "PingFang SC",
+      "Microsoft YaHei";
+    }
+  :root:lang(ko) {
+    --font-cjk: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR",
+      "Noto Sans CJK KR", "PingFang SC", "Microsoft YaHei";
+    }
+  /* Same scoping for the serif tier the share-card plugins select. Exported
+     card images are rasterized in this document, so a Japanese user must get
+     Mincho forms here — the pre-existing Chinese-only list is exactly what
+     painted their cards with Chinese glyphs. */
+  :root {
+    --font-cjk-serif: "Songti SC", "STSong", "Noto Serif CJK SC",
+      "Noto Serif SC", SimSun;
+    }
+  :root:lang(ja) {
+    --font-cjk-serif: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP",
+      "Noto Serif CJK JP", "Songti SC";
+    }
+  :root:lang(ko) {
+    --font-cjk-serif: "AppleMyungjo", Batang, "Noto Serif KR",
+      "Noto Serif CJK KR", "Songti SC";
+    }
   /* RTL 排版重置：负字距会切断阿拉伯字母的连笔曲线 */
   [dir="rtl"] :is(h1, h2, h3, h4, [class*="tracking-"]) {
     letter-spacing: 0;
@@ -342,6 +404,77 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: color-mix(in oklab, var(--muted-foreground) 55%, transparent);
+}
+
+/* Liquid Glass baseline material (docs/liquid-glass-design.md): one recipe for
+   every engine — backdrop blur + saturate under a specular gradient rim.
+   Unlayered on purpose: the material must out-rank the background, ring and
+   shadow utilities on the same element. A glass surface must be positioned
+   (fixed/sticky/relative) so the rim pseudo-element anchors to it. */
+.glass {
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow:
+    0 12px 32px -12px var(--glass-shadow),
+    inset 0 1px 0 var(--glass-rim);
+}
+
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    var(--glass-rim),
+    transparent 38%,
+    transparent 62%,
+    var(--glass-edge)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* sonner injects its styles at runtime, AFTER this sheet, at 0-2-0
+   specificity ([data-sonner-toast][data-styled=true]); the glass override
+   must out-rank that or the material never lands on toasts. */
+[data-sonner-toast][data-styled=true].glass {
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* Degrade: OS-level reduced transparency, or the emergency kill switch
+   <html data-glass="off"> — both fall back to the solid card surface. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  [data-sonner-toast][data-styled=true].glass {
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .glass::after {
+    display: none;
+  }
+}
+
+:root[data-glass="off"] .glass,
+:root[data-glass="off"] [data-sonner-toast][data-styled=true].glass {
+  background: var(--card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+:root[data-glass="off"] .glass::after {
+  display: none;
 }
 
 @layer utilities {
@@ -430,6 +563,24 @@
     @apply mr-2 align-middle accent-brand-500;
   }
 
+  /* Shiki dual themes on article surfaces: colors arrive as CSS variables
+     (defaultColor: false), resolved per color-scheme at display time. */
+  .memo-markdown pre.shiki {
+    @apply bg-[var(--shiki-light-bg)];
+  }
+
+  .memo-markdown pre.shiki span {
+    color: var(--shiki-light);
+  }
+
+  .dark .memo-markdown pre.shiki {
+    @apply bg-[var(--shiki-dark-bg)];
+  }
+
+  .dark .memo-markdown pre.shiki span {
+    color: var(--shiki-dark);
+  }
+
   /* Transcript reading: an attachment image is constrained so a large scan
      cannot break the column, and heading anchors clear the sticky player. */
   .memo-markdown img {
@@ -441,6 +592,42 @@
      anchors, image frames). The box grows with content up to a cap. */
   .composer-editor-content {
     @apply min-h-32 max-h-80 overflow-y-auto px-4 pt-4 pb-2 text-[15px] leading-7 outline-none;
+  }
+
+  /* Article editor body: same typography as the reading surface, but
+     unclipped — a long article grows the page instead of scrolling inside
+     a fixed box. */
+  .article-editor-content {
+    @apply min-h-[55vh] px-1 pt-2 pb-2 text-[15px] leading-7 outline-none;
+  }
+
+  .article-editor-content p {
+    @apply my-0 min-h-7;
+  }
+
+  .article-editor-content p + p {
+    @apply mt-3;
+  }
+
+  .article-editor-content h1 {
+    @apply mt-4 text-2xl font-semibold tracking-tight;
+  }
+
+  .article-editor-content h2 {
+    @apply mt-4 text-xl font-semibold tracking-tight;
+  }
+
+  .article-editor-content h3 {
+    @apply mt-3 text-lg font-semibold;
+  }
+
+  .article-editor-content table {
+    @apply my-3 w-full border-collapse text-sm;
+  }
+
+  .article-editor-content th,
+  .article-editor-content td {
+    @apply border px-3 py-2 text-left;
   }
 
   /* flomo-style idle composer: an unfocused empty box shrinks to one quiet

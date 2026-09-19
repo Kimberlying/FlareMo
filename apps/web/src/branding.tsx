@@ -7,7 +7,10 @@ import {
   useState,
 } from "react";
 import { getPublicBranding } from "@/api";
-import { setFaviconAccent } from "@/components/theme-provider";
+import {
+  setCustomFavicon,
+  setFaviconAccent,
+} from "@/components/theme-provider";
 import { buildCustomRamp, normalizeHexColor } from "@/lib/brand-ramp";
 
 export type BrandingAccent =
@@ -27,6 +30,7 @@ export type Branding = {
   accentHex: string | null;
   markLightUrl: string | null;
   markDarkUrl: string | null;
+  faviconUrl: string | null;
 };
 
 export const DEFAULT_BRANDING: Branding = {
@@ -35,6 +39,7 @@ export const DEFAULT_BRANDING: Branding = {
   accentHex: null,
   markLightUrl: null,
   markDarkUrl: null,
+  faviconUrl: null,
 };
 
 const BrandingContext = createContext<Branding>(DEFAULT_BRANDING);
@@ -181,6 +186,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         accentHex: info.accent_hex ?? null,
         markLightUrl: info.mark_light_url,
         markDarkUrl: info.mark_dark_url,
+        faviconUrl: info.favicon_url ?? null,
       });
     });
     return () => {
@@ -196,10 +202,16 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     applyAccent(branding.accent, branding.accentHex);
+    if (branding.faviconUrl) {
+      // A custom favicon overrides both the bundled theme-dependent icons and
+      // the accent-recolor machinery in setFaviconAccent.
+      setCustomFavicon(branding.faviconUrl);
+      return;
+    }
     // No prerendered mark exists for arbitrary seeds: a custom accent keeps
     // the bundled flame favicon rather than a broken /brand/custom/ URL.
     setFaviconAccent(branding.accent === "custom" ? "flame" : branding.accent);
-  }, [branding.accent, branding.accentHex]);
+  }, [branding.accent, branding.accentHex, branding.faviconUrl]);
 
   // Sibling tabs paint owner-side accent changes instantly. Reuses the same
   // apply effect above (favicon included); the broadcast sender never hears

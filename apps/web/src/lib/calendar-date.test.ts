@@ -7,6 +7,7 @@ import {
   isoDay,
   monthOf,
   nextDay,
+  prevDay,
   todayKey,
   weekdayLabels,
 } from "./calendar-date";
@@ -22,9 +23,10 @@ describe("isoDay / todayKey", () => {
   });
 });
 
-describe("nextDay", () => {
+describe("nextDay / prevDay", () => {
   it("crosses month boundaries", () => {
     expect(nextDay("2026-08-31")).toBe("2026-09-01");
+    expect(prevDay("2026-09-01")).toBe("2026-08-31");
   });
 });
 

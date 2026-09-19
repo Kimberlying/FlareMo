@@ -17,6 +17,7 @@ import {
   WifiOff,
   Zap,
 } from "lucide-react";
+import { CardGallerySection } from "@/components/card-gallery-section";
 import { InteractiveShowcase } from "@/components/interactive-showcase";
 import {
   AnimatedNumber,
@@ -96,6 +97,7 @@ export function HomePage() {
         subtitle={home.comparisonSubtitle}
       />
       <EcosystemSection locale={locale} />
+      <CardGallerySection locale={locale} />
       <FaqSection
         badge={home.faqBadge}
         heading={home.faqHeading}
@@ -129,7 +131,9 @@ function Hero({
   return (
     <section className="relative pt-12 md:pt-20">
       <div className="container-x space-y-12">
-        <div className="mx-auto max-w-3xl space-y-6 text-center">
+        {/* 限宽交给各子元素（副标题自带 mx-auto max-w-2xl）；外层不能限宽——
+            EN/ZH 标题锁行 nowrap 后行宽会超过 3xl，行盒溢出会导致 text-center 失效 */}
+        <div className="space-y-6 text-center">
           {/* Eyebrow Pill */}
           <PopIn className="inline-flex">
             <div className="inline-flex items-center gap-2 rounded-full border border-signal/30 bg-signal/10 px-3.5 py-1 text-xs font-semibold text-signal-ink shadow-2xs backdrop-blur-md">

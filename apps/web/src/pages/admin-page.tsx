@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CrownIcon,
+  EyeIcon,
+  EyeOffIcon,
   ImageUpIcon,
   KeyRoundIcon,
   Loader2Icon,
@@ -7,15 +12,21 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  ShieldCheckIcon,
   Trash2Icon,
   UserCogIcon,
+  UserIcon,
+  UsersIcon,
+  XIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   type AdminBranding,
   type AdminUser,
+  type BrandingAssetKind,
   type BrandingMarkVariant,
+  clearAdminBrandingFavicon,
   clearAdminBrandingMark,
   createAdminUser,
   deleteAdminUser,
@@ -23,9 +34,12 @@ import {
   getCurrentFlareMoUser,
   listAdminUsers,
   requestAdminPasswordReset,
+  revokeAdminUserReader,
+  setAdminUserReader,
   updateAdminBrandingAccent,
   updateAdminBrandingProductName,
   updateAdminUserRole,
+  uploadAdminBrandingFavicon,
   uploadAdminBrandingMark,
 } from "@/api";
 import {
@@ -68,6 +82,7 @@ import { useI18n } from "@/i18n";
 import type { TranslationKey } from "@/i18n/key";
 import { normalizeHexColor } from "@/lib/brand-ramp";
 import { errorMessage } from "@/lib/error";
+import { cn } from "@/lib/utils";
 
 export function AdminPanel() {
   const { t } = useI18n();
@@ -80,8 +95,12 @@ export function AdminPanel() {
   const [createdLink, setCreatedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [roleFilter, setRoleFilter] = useState<
+    "all" | "owner" | "admin" | "member" | "reader"
+  >("all");
   const [memberSearch, setMemberSearch] = useState("");
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const usersQuery = useQuery({
     queryKey: ["admin-users"],
@@ -115,6 +134,25 @@ export function AdminPanel() {
   const updateRoleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: "admin" | "member" }) =>
       updateAdminUserRole(id, role),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["current-flaremo-user"],
+      });
+    },
+  });
+  const setReaderMutation = useMutation({
+    mutationFn: ({ id, expiresAt }: { id: string; expiresAt: string | null }) =>
+      setAdminUserReader(id, expiresAt),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["current-flaremo-user"],
+      });
+    },
+  });
+  const revokeReaderMutation = useMutation({
+    mutationFn: (id: string) => revokeAdminUserReader(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       void queryClient.invalidateQueries({
@@ -172,6 +210,36 @@ export function AdminPanel() {
     }
   };
 
+  // Renewal extends from max(now, current expiry) so topping up an active
+  // seat never discards the days already paid for.
+  const readerExpiryBase = (user: AdminUser): number => {
+    const current = user.reader_expires_at
+      ? new Date(user.reader_expires_at).getTime()
+      : Number.NaN;
+    return Number.isNaN(current) ? Date.now() : Math.max(Date.now(), current);
+  };
+
+  const handleSetReader = async (user: AdminUser, days: number) => {
+    try {
+      await setReaderMutation.mutateAsync({
+        id: user.id,
+        expiresAt: new Date(
+          readerExpiryBase(user) + days * 86_400_000,
+        ).toISOString(),
+      });
+    } catch (error) {
+      toast.error(errorMessage(error, t("admin.readerSetFailed")));
+    }
+  };
+
+  const handleRevokeReader = async (user: AdminUser) => {
+    try {
+      await revokeReaderMutation.mutateAsync(user.id);
+    } catch (error) {
+      toast.error(errorMessage(error, t("admin.readerRevokeFailed")));
+    }
+  };
+
   const handleCopyResetLink = async (link: string) => {
     try {
       await navigator.clipboard.writeText(link);
@@ -181,11 +249,84 @@ export function AdminPanel() {
     }
   };
 
+  const allUsers = useMemo(
+    () => usersQuery.data?.users ?? [],
+    [usersQuery.data?.users],
+  );
+
+  const counts = useMemo(() => {
+    const res = {
+      all: allUsers.length,
+      owner: 0,
+      admin: 0,
+      member: 0,
+      reader: 0,
+    };
+    for (const u of allUsers) {
+      if (u.role === "owner") res.owner += 1;
+      else if (u.role === "admin") res.admin += 1;
+      else if (u.role === "reader") res.reader += 1;
+      else res.member += 1;
+    }
+    return res;
+  }, [allUsers]);
+
+  const filteredMembers = useMemo(() => {
+    return allUsers.filter((user) => {
+      if (roleFilter !== "all") {
+        if (
+          roleFilter === "member" &&
+          user.role !== "member" &&
+          user.role !== null
+        ) {
+          return false;
+        }
+        if (roleFilter !== "member" && user.role !== roleFilter) {
+          return false;
+        }
+      }
+      if (memberSearch.trim()) {
+        const q = memberSearch.trim().toLowerCase();
+        const match =
+          user.name?.toLowerCase().includes(q) ||
+          user.email?.toLowerCase().includes(q) ||
+          user.username?.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [allUsers, roleFilter, memberSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / pageSize));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const pagedMembers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredMembers.slice(start, start + pageSize);
+  }, [filteredMembers, currentPage, pageSize]);
+
+  const getReaderStatus = (user: AdminUser) => {
+    if (user.role !== "reader" || !user.reader_expires_at) return null;
+    const expiry = new Date(user.reader_expires_at).getTime();
+    if (Number.isNaN(expiry)) return null;
+    const now = Date.now();
+    const diffDays = Math.ceil((expiry - now) / 86_400_000);
+    return {
+      expired: diffDays <= 0,
+      days: diffDays,
+      dateFormatted: formatDate(user.reader_expires_at),
+    };
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{t("admin.usersTitle")}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div>
+            <CardTitle>{t("admin.usersTitle")}</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("admin.userCount", { count: String(allUsers.length) })}
+            </p>
+          </div>
           <Button
             size="sm"
             type="button"
@@ -199,140 +340,407 @@ export function AdminPanel() {
             {t("admin.createUser")}
           </Button>
         </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <div className="border-t pt-4">
+        <CardContent className="flex flex-col gap-4 pt-0">
+          {/* Filter & Toolbar Area */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+            {/* Role Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  { id: "all", label: t("admin.filterAll"), count: counts.all },
+                  {
+                    id: "owner",
+                    label: t("admin.role.owner"),
+                    count: counts.owner,
+                  },
+                  {
+                    id: "admin",
+                    label: t("admin.role.admin"),
+                    count: counts.admin,
+                  },
+                  {
+                    id: "member",
+                    label: t("admin.role.member"),
+                    count: counts.member,
+                  },
+                  {
+                    id: "reader",
+                    label: t("admin.role.reader"),
+                    count: counts.reader,
+                  },
+                ] as const
+              ).map((tab) => {
+                const active = roleFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setRoleFilter(tab.id);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-2xs"
+                        : "bg-background text-muted-foreground hover:bg-accent hover:text-foreground border border-border/40",
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] tabular-nums leading-none",
+                        active
+                          ? "bg-primary-foreground/20 text-primary-foreground"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search + Page Size */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="relative min-w-[200px] flex-1 max-w-sm">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  aria-label={t("admin.memberSearchPlaceholder")}
+                  className="h-8.5 pl-8 pr-8 text-xs bg-background"
+                  placeholder={t("admin.memberSearchPlaceholder")}
+                  value={memberSearch}
+                  onChange={(event) => {
+                    setMemberSearch(event.target.value);
+                    setPage(1);
+                  }}
+                />
+                {memberSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMemberSearch("");
+                      setPage(1);
+                    }}
+                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <XIcon className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {t("admin.pageSizeLabel")}
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-8.5 rounded-lg border border-border/60 bg-background px-2 text-xs text-foreground outline-hidden focus:border-ring"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Members Table */}
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-2xs">
             {usersQuery.isLoading && (
-              <div className="flex flex-col gap-2">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
+              <div className="flex flex-col gap-2 p-4">
+                <Skeleton className="h-12 w-full rounded-lg" />
+                <Skeleton className="h-12 w-full rounded-lg" />
+                <Skeleton className="h-12 w-full rounded-lg" />
               </div>
             )}
             {usersQuery.isError && (
-              <p className="text-sm text-destructive">
+              <p className="p-4 text-sm text-destructive">
                 {t("admin.usersLoadFailed")}
               </p>
             )}
             {usersQuery.data && (
               <>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    {t("admin.userCount", {
-                      count: String(
-                        filterMembers(usersQuery.data.users, memberSearch)
-                          .length,
-                      ),
-                    })}
-                  </p>
-                  <div className="relative w-full max-w-64">
-                    <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      aria-label={t("admin.memberSearchPlaceholder")}
-                      className="h-8 pl-8"
-                      placeholder={t("admin.memberSearchPlaceholder")}
-                      value={memberSearch}
-                      onChange={(event) => {
-                        setMemberSearch(event.target.value);
-                        setVisibleCount(MEMBER_PAGE_SIZE);
-                      }}
-                    />
+                <div className="divide-y divide-border/40">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-12 items-center bg-muted/40 px-3.5 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <div className="col-span-5 sm:col-span-5">
+                      {t("admin.columnMember")}
+                    </div>
+                    <div className="col-span-3 sm:col-span-3">
+                      {t("admin.columnRole")}
+                    </div>
+                    <div className="col-span-3 sm:col-span-3">
+                      {t("admin.columnExpiry")}
+                    </div>
+                    <div className="col-span-1 text-right">
+                      {t("admin.columnActions")}
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {filterMembers(usersQuery.data.users, memberSearch)
-                    .slice(0, visibleCount)
-                    .map((user) => (
+
+                  {/* Rows */}
+                  {pagedMembers.map((user) => {
+                    const readerStatus = getReaderStatus(user);
+                    const isSelf = meQuery.data?.id === user.id;
+                    return (
                       <div
                         key={user.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-3"
+                        className="grid grid-cols-12 items-center px-3.5 py-2.5 transition-colors hover:bg-accent/30"
                       >
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-medium">
-                              {user.name}
-                            </p>
-                            <Badge variant="secondary">@{user.username}</Badge>
-                            <Badge
-                              variant={
-                                user.role !== "member" ? "default" : "outline"
-                              }
-                            >
-                              {user.role === "owner"
-                                ? t("admin.role.owner")
-                                : user.role === "admin"
-                                  ? t("admin.role.admin")
-                                  : t("admin.role.member")}
-                            </Badge>
+                        {/* Member identity */}
+                        <div className="col-span-5 sm:col-span-5 flex items-center gap-2.5 min-w-0 pr-2">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                            {(user.name || user.username || "?")
+                              .slice(0, 1)
+                              .toUpperCase()}
                           </div>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {user.email}
-                          </p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="truncate text-xs font-semibold text-foreground">
+                                {user.name}
+                              </span>
+                              {isSelf && (
+                                <span className="rounded bg-primary/10 px-1 py-0.2 text-[10px] font-normal text-primary">
+                                  {t("admin.selfBadge")}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground truncate">
+                              <span>@{user.username}</span>
+                              <span>·</span>
+                              <span className="truncate">{user.email}</span>
+                            </div>
+                          </div>
                         </div>
-                        {user.role !== "owner" && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button
-                                  aria-label={t("admin.memberActions")}
-                                  size="icon-sm"
-                                  type="button"
-                                  variant="ghost"
-                                >
-                                  <MoreHorizontalIcon />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end">
-                              {isTeamOwner && (
-                                <DropdownMenuItem
-                                  onClick={() => void handleUpdateRole(user)}
-                                >
-                                  <UserCogIcon />
-                                  {user.role === "admin"
-                                    ? t("admin.makeMember")
-                                    : t("admin.makeAdmin")}
-                                </DropdownMenuItem>
-                              )}
-                              {(isTeamOwner || user.role === "member") && (
-                                <DropdownMenuItem
-                                  onClick={() => void handleResetPassword(user)}
-                                >
-                                  <KeyRoundIcon />
-                                  {t("admin.resetPassword")}
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
+
+                        {/* Role */}
+                        <div className="col-span-3 sm:col-span-3 flex items-center">
+                          {user.role === "owner" ? (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium"
+                            >
+                              <CrownIcon className="size-3" />
+                              <span>{t("admin.role.owner")}</span>
+                            </Badge>
+                          ) : user.role === "admin" ? (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 border-primary/20 bg-primary/10 text-primary font-medium"
+                            >
+                              <ShieldCheckIcon className="size-3" />
+                              <span>{t("admin.role.admin")}</span>
+                            </Badge>
+                          ) : user.role === "reader" ? (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium"
+                            >
+                              <EyeIcon className="size-3" />
+                              <span>{t("admin.role.reader")}</span>
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="gap-1 text-muted-foreground font-normal"
+                            >
+                              <UserIcon className="size-3" />
+                              <span>{t("admin.role.member")}</span>
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Status / Expiry / Join Date */}
+                        <div className="col-span-3 sm:col-span-3 text-xs text-muted-foreground truncate">
+                          {user.role === "reader" && readerStatus ? (
+                            readerStatus.expired ? (
+                              <Badge
                                 variant="destructive"
-                                onClick={() => setDeleteTarget(user)}
+                                className="h-5 px-1.5 text-[10px]"
                               >
-                                <Trash2Icon />
-                                {t("admin.deleteUser")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                                {t("admin.expired")} (
+                                {readerStatus.dateFormatted})
+                              </Badge>
+                            ) : (
+                              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                                {t("admin.daysLeft", {
+                                  days: String(readerStatus.days),
+                                })}
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-[11px]">
+                              {formatDate(user.created_at)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="col-span-1 flex justify-end">
+                          {user.role !== "owner" ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                render={
+                                  <Button
+                                    aria-label={t("admin.memberActions")}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="ghost"
+                                    className="size-7"
+                                  >
+                                    <MoreHorizontalIcon className="size-4" />
+                                  </Button>
+                                }
+                              />
+                              <DropdownMenuContent align="end">
+                                {isTeamOwner && (
+                                  <DropdownMenuItem
+                                    onClick={() => void handleUpdateRole(user)}
+                                  >
+                                    <UserCogIcon />
+                                    {user.role === "admin"
+                                      ? t("admin.makeMember")
+                                      : t("admin.makeAdmin")}
+                                  </DropdownMenuItem>
+                                )}
+                                {(user.role === "member" ||
+                                  user.role === "reader" ||
+                                  user.role === null) && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        void handleSetReader(user, 30)
+                                      }
+                                    >
+                                      <EyeIcon />
+                                      {user.role === "reader"
+                                        ? t("admin.renewReader30")
+                                        : t("admin.makeReader30")}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        void handleSetReader(user, 365)
+                                      }
+                                    >
+                                      <EyeIcon />
+                                      {user.role === "reader"
+                                        ? t("admin.renewReader365")
+                                        : t("admin.makeReader365")}
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {user.role === "reader" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      void handleRevokeReader(user)
+                                    }
+                                  >
+                                    <EyeOffIcon />
+                                    {t("admin.revokeReader")}
+                                  </DropdownMenuItem>
+                                )}
+                                {(isTeamOwner || user.role === "member") && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      void handleResetPassword(user)
+                                    }
+                                  >
+                                    <KeyRoundIcon />
+                                    {t("admin.resetPassword")}
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onClick={() => setDeleteTarget(user)}
+                                >
+                                  <Trash2Icon />
+                                  {t("admin.deleteUser")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : (
+                            <span className="size-7" />
+                          )}
+                        </div>
                       </div>
-                    ))}
-                  {filterMembers(usersQuery.data.users, memberSearch).length ===
-                    0 && (
-                    <p className="text-sm text-muted-foreground">
-                      {t("admin.memberSearchEmpty")}
-                    </p>
+                    );
+                  })}
+
+                  {/* Empty state */}
+                  {filteredMembers.length === 0 && (
+                    <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                      <UsersIcon className="size-8 text-muted-foreground/40" />
+                      <p className="text-xs text-muted-foreground">
+                        {t("admin.memberSearchEmpty")}
+                      </p>
+                      {(memberSearch || roleFilter !== "all") && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => {
+                            setMemberSearch("");
+                            setRoleFilter("all");
+                            setPage(1);
+                          }}
+                        >
+                          {t("admin.clearFilters")}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
-                {filterMembers(usersQuery.data.users, memberSearch).length >
-                  visibleCount && (
-                  <Button
-                    className="mt-3"
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setVisibleCount((count) => count + MEMBER_PAGE_SIZE)
-                    }
-                  >
-                    {t("admin.showMore")}
-                  </Button>
+
+                {/* Pagination Footer */}
+                {filteredMembers.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground">
+                    <div>
+                      {t("admin.pageRangeInfo", {
+                        from: String((currentPage - 1) * pageSize + 1),
+                        to: String(
+                          Math.min(
+                            currentPage * pageSize,
+                            filteredMembers.length,
+                          ),
+                        ),
+                        total: String(filteredMembers.length),
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={currentPage <= 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        title={t("admin.pagePrev")}
+                      >
+                        <ChevronLeftIcon className="size-3.5" />
+                      </Button>
+
+                      <span className="px-2 font-medium tabular-nums text-foreground">
+                        {currentPage} / {totalPages}
+                      </span>
+
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        disabled={currentPage >= totalPages}
+                        onClick={() =>
+                          setPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        title={t("admin.pageNext")}
+                      >
+                        <ChevronRightIcon className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </>
             )}
@@ -487,7 +895,8 @@ export function AdminPanel() {
 }
 
 const ACCEPTED_MARK_TYPES = "image/png,image/webp,image/svg+xml";
-const MEMBER_PAGE_SIZE = 20;
+const ACCEPTED_FAVICON_TYPES =
+  "image/png,image/webp,image/svg+xml,image/x-icon,image/vnd.microsoft.icon";
 
 /** Swatch dots are fixed hex so the palette reads the same in any theme. */
 const ACCENT_SWATCH_HEX: Record<Exclude<BrandingAccent, "custom">, string> = {
@@ -574,14 +983,15 @@ function AccentPicker({
   );
 }
 
-function filterMembers(users: AdminUser[], search: string): AdminUser[] {
-  const query = search.trim().toLowerCase();
-  if (!query) return users;
-  return users.filter((user) =>
-    [user.name, user.email, user.username].some((value) =>
-      value?.toLowerCase().includes(query),
-    ),
-  );
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? iso
+    : date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
 }
 
 /**
@@ -691,6 +1101,7 @@ export function BrandingCard() {
   const [productName, setProductName] = useState("");
   const lightInputRef = useRef<HTMLInputElement>(null);
   const darkInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   const brandingQuery = useQuery({
     queryKey: ["admin-branding"],
@@ -755,6 +1166,16 @@ export function BrandingCard() {
       toast.error(errorMessage(error, t("admin.branding.failed"))),
   });
 
+  const uploadFaviconMutation = useMutation({
+    mutationFn: (file: File) => uploadAdminBrandingFavicon(file),
+    onSuccess: () => {
+      toast.success(t("admin.branding.faviconUploaded"));
+      void queryClient.invalidateQueries({ queryKey: ["admin-branding"] });
+    },
+    onError: (error) =>
+      toast.error(errorMessage(error, t("admin.branding.failed"))),
+  });
+
   const clearMarkMutation = useMutation({
     mutationFn: (variant: BrandingMarkVariant) =>
       clearAdminBrandingMark(variant),
@@ -766,19 +1187,32 @@ export function BrandingCard() {
       toast.error(errorMessage(error, t("admin.branding.failed"))),
   });
 
+  const clearFaviconMutation = useMutation({
+    mutationFn: () => clearAdminBrandingFavicon(),
+    onSuccess: () => {
+      toast.success(t("admin.branding.faviconRemoved"));
+      void queryClient.invalidateQueries({ queryKey: ["admin-branding"] });
+    },
+    onError: (error) =>
+      toast.error(errorMessage(error, t("admin.branding.failed"))),
+  });
+
   const handleFileChange = (
-    variant: BrandingMarkVariant,
+    kind: BrandingAssetKind,
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (file) {
-      void uploadMarkMutation.mutateAsync({ variant, file });
+    if (!file) return;
+    if (kind === "favicon") {
+      void uploadFaviconMutation.mutateAsync(file);
+    } else {
+      void uploadMarkMutation.mutateAsync({ variant: kind, file });
     }
   };
 
   const renderMarkRow = (
-    variant: BrandingMarkVariant,
+    kind: BrandingAssetKind,
     label: string,
     url: string | null,
     inputRef: React.RefObject<HTMLInputElement | null>,
@@ -795,14 +1229,20 @@ export function BrandingCard() {
         <p className="text-sm font-medium">{label}</p>
         <div className="mt-1 flex gap-2">
           <input
-            accept={ACCEPTED_MARK_TYPES}
+            accept={
+              kind === "favicon" ? ACCEPTED_FAVICON_TYPES : ACCEPTED_MARK_TYPES
+            }
             className="hidden"
             ref={inputRef}
             type="file"
-            onChange={(event) => handleFileChange(variant, event)}
+            onChange={(event) => handleFileChange(kind, event)}
           />
           <Button
-            disabled={uploadMarkMutation.isPending}
+            disabled={
+              kind === "favicon"
+                ? uploadFaviconMutation.isPending
+                : uploadMarkMutation.isPending
+            }
             size="sm"
             type="button"
             variant="outline"
@@ -812,11 +1252,19 @@ export function BrandingCard() {
           </Button>
           {url && (
             <Button
-              disabled={clearMarkMutation.isPending}
+              disabled={
+                kind === "favicon"
+                  ? clearFaviconMutation.isPending
+                  : clearMarkMutation.isPending
+              }
               size="sm"
               type="button"
               variant="ghost"
-              onClick={() => void clearMarkMutation.mutateAsync(variant)}
+              onClick={() =>
+                kind === "favicon"
+                  ? void clearFaviconMutation.mutateAsync()
+                  : void clearMarkMutation.mutateAsync(kind)
+              }
             >
               <Trash2Icon data-icon="inline-start" />
               {t("admin.branding.remove")}
@@ -962,6 +1410,12 @@ export function BrandingCard() {
               t("admin.branding.markDark"),
               brandingQuery.data?.mark_dark_url ?? null,
               darkInputRef,
+            )}
+            {renderMarkRow(
+              "favicon",
+              t("admin.branding.favicon"),
+              brandingQuery.data?.favicon_url ?? null,
+              faviconInputRef,
             )}
           </div>
         </DialogContent>

@@ -54,6 +54,26 @@ export async function updateAdminUserRole(
   );
 }
 
+/** Grant or renew the read-only reader seat. Pass an absolute expiry or null for a seat without one. */
+export async function setAdminUserReader(id: string, expiresAt: string | null) {
+  return apiRequest<AdminUser>(
+    `/api/app/admin/users/${encodeURIComponent(id)}/reader`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ expires_at: expiresAt }),
+    },
+  );
+}
+
+export async function revokeAdminUserReader(id: string) {
+  return apiRequest<AdminUser>(
+    `/api/app/admin/users/${encodeURIComponent(id)}/reader`,
+    {
+      method: "DELETE",
+    },
+  );
+}
+
 export async function requestAdminPasswordReset(id: string) {
   return apiRequest<{
     token: string;

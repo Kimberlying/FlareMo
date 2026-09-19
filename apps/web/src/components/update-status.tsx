@@ -3,7 +3,6 @@ import {
   ArrowUpCircleIcon,
   CircleCheckIcon,
   ExternalLinkIcon,
-  RefreshCwIcon,
 } from "lucide-react";
 import { getAppInfo, getLatestRelease } from "@/api";
 import { Badge } from "@/components/ui/badge";
@@ -15,17 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { compareVersions } from "@/lib/version";
 
-// Two states, two shapes. Up to date: check icon + one line + one link — most
-// visits land here, so nothing more earns its place. Update available: a
-// current → latest arrow with the release date, one primary action.
-export function UpdateStatus() {
-  const { locale, t } = useI18n();
+// Deployed version vs latest release. Shared by the user-menu entry (version
+// text + update dot) and the update dialog.
+export function useUpdateStatus() {
   const appInfoQuery = useQuery({
     queryKey: ["app-info"],
     queryFn: getAppInfo,
@@ -50,6 +46,29 @@ export function UpdateStatus() {
     appInfo && release && compareVersions(release.version, appInfo.version) > 0,
   );
   const updateUrl = appInfo?.update_workflow_url ?? appInfo?.update_guide_url;
+
+  return {
+    appInfo,
+    release,
+    updateAvailable,
+    updateUrl,
+    pending: releaseQuery.isPending,
+  };
+}
+
+// Two states, two shapes. Up to date: check icon + one line + one link — most
+// visits land here, so nothing more earns its place. Update available: a
+// current → latest arrow with the release date, one primary action.
+export function UpdateStatusDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { locale, t } = useI18n();
+  const { appInfo, release, updateAvailable, updateUrl, pending } =
+    useUpdateStatus();
   const published = release?.published_at
     ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
         new Date(release.published_at),
@@ -76,38 +95,7 @@ export function UpdateStatus() {
       : null;
 
   return (
-    <Dialog>
-      <DialogTrigger
-        render={
-          <Button
-            aria-label={t("update.title")}
-            className="relative px-2"
-            size="sm"
-            title={t("update.title")}
-            variant="ghost"
-          >
-            <RefreshCwIcon />
-            {appInfo ? (
-              <span className="text-xs font-medium">v{appInfo.version}</span>
-            ) : (
-              // Invisible placeholder keeps the button's width stable until
-              // app-info lands; a real version has the same digit count.
-              <span
-                aria-hidden="true"
-                className="invisible text-xs font-medium"
-              >
-                v0.00
-              </span>
-            )}
-            {updateAvailable && (
-              <span
-                aria-hidden="true"
-                className="absolute top-1 right-1 size-1.5 rounded-full bg-primary"
-              />
-            )}
-          </Button>
-        }
-      />
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
           <div className="flex items-start gap-3 pr-7">
@@ -139,9 +127,7 @@ export function UpdateStatus() {
               </div>
               <DialogDescription>
                 {(updateAvailable ? rangeLine : versionLine) ??
-                  (releaseQuery.isPending
-                    ? t("update.loading")
-                    : t("update.checkFailed"))}
+                  (pending ? t("update.loading") : t("update.checkFailed"))}
               </DialogDescription>
             </div>
           </div>

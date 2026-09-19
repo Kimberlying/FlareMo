@@ -1,0 +1,152 @@
+{
+  "specVersion": 1,
+  "id": "flaremo-cards",
+  "version": "1.2.0",
+  "name": {
+    "zh-CN": "基础卡片",
+    "en-US": "Basic cards",
+    "ja": "ベーシックカード",
+    "ko": "기본 카드",
+    "ru": "Базовые карточки",
+    "fr": "Cartes de base",
+    "es": "Tarjetas básicas",
+    "ar": "البطاقات الأساسية"
+  },
+  "description": {
+    "zh-CN": "素白、日签、票根、明信片、语录、思考笺、素墨、暮火——精心打磨的内置卡片。",
+    "en-US": "Plain, daily, ticket, postcard, quote, mono, zen, and ember — crafted cards bundled with FlareMo."
+  },
+  "author": {
+    "name": "FlareMo"
+  },
+  "license": "AGPL-3.0-only",
+  "defaultEnabled": true,
+  "contributes": {
+    "shareCardTemplates": [
+      {
+        "id": "plain",
+        "kind": "document",
+        "name": {
+          "zh-CN": "素白",
+          "en-US": "Plain",
+          "ja": "素白",
+          "ko": "소백",
+          "ru": "Простой",
+          "fr": "Blanc",
+          "es": "Sencillo",
+          "ar": "أبيض"
+        },
+        "document": "cards/plain.json",
+        "preview": "cards/plain.preview.png"
+      },
+      {
+        "id": "daily",
+        "kind": "document",
+        "name": {
+          "zh-CN": "日签",
+          "en-US": "Daily",
+          "ja": "日签",
+          "ko": "데일리",
+          "ru": "Ежедневник",
+          "fr": "Citation du jour",
+          "es": "Diario",
+          "ar": "يومية"
+        },
+        "document": "cards/daily.json",
+        "preview": "cards/daily.preview.png"
+      },
+      {
+        "id": "ticket",
+        "kind": "document",
+        "name": {
+          "zh-CN": "票根",
+          "en-US": "Ticket",
+          "ja": "票根",
+          "ko": "티켓",
+          "ru": "Билет",
+          "fr": "Ticket",
+          "es": "Billete",
+          "ar": "تذكرة"
+        },
+        "document": "cards/ticket.json",
+        "preview": "cards/ticket.preview.png"
+      },
+      {
+        "id": "postcard",
+        "kind": "document",
+        "name": {
+          "zh-CN": "明信片",
+          "en-US": "Postcard",
+          "ja": "ポストカード",
+          "ko": "엽서",
+          "ru": "Открытка",
+          "fr": "Carte postale",
+          "es": "Postal",
+          "ar": "بطاقة بريدية"
+        },
+        "document": "cards/postcard.json",
+        "preview": "cards/postcard.preview.png"
+      },
+      {
+        "id": "quote",
+        "kind": "document",
+        "name": {
+          "zh-CN": "语录",
+          "en-US": "Quote",
+          "ja": "語録",
+          "ko": "어록",
+          "ru": "Цитата",
+          "fr": "Citation",
+          "es": "Cita",
+          "ar": "اقتباس"
+        },
+        "document": "cards/quote.json"
+      },
+      {
+        "id": "mono",
+        "kind": "document",
+        "name": {
+          "zh-CN": "思考笺",
+          "en-US": "Mono",
+          "ja": "思考箋",
+          "ko": "생각 노트",
+          "ru": "Заметка Mono",
+          "fr": "Feuille Mono",
+          "es": "Nota Mono",
+          "ar": "مذكرة مونو"
+        },
+        "document": "cards/mono.json"
+      },
+      {
+        "id": "zen",
+        "kind": "document",
+        "name": {
+          "zh-CN": "素墨",
+          "en-US": "Zen",
+          "ja": "素墨",
+          "ko": "소묵",
+          "ru": "Дзен",
+          "fr": "Zen",
+          "es": "Zen",
+          "ar": "زن"
+        },
+        "document": "cards/zen.json"
+      },
+      {
+        "id": "ember",
+        "kind": "document",
+        "name": {
+          "zh-CN": "暮火",
+          "en-US": "Ember",
+          "ja": "残火",
+          "ko": "잔불",
+          "ru": "Уголек",
+          "fr": "Braise",
+          "es": "Ascuas",
+          "ar": "جمرة"
+        },
+        "document": "cards/ember.json"
+      }
+    ]
+  }
+}

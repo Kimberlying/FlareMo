@@ -28,14 +28,15 @@ import {
   deletePushSubscription,
   deleteTag,
   estimateTokenCount,
+  ForbiddenError,
   getBranding,
   getCalendarView,
   getFlaremoUserNames,
+  getMembershipState,
   getMemoById,
   getMemoStats,
   getRandomMemo,
   getSemanticSearchMemos,
-  getViewerTeamInfo,
   getWalkNextMemo,
   incrementUsageCounter,
   isInstanceOwner,
@@ -67,6 +68,7 @@ import {
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { z } from "zod";
+import { fetchCloudflareUsage, resolveAnalyticsConfig } from "../cf-analytics";
 import { getRequestContext, type HonoBindings } from "../context";
 import {
   createEmbeddingProvider,
@@ -102,6 +104,17 @@ appApi.get("/me", async (c) => {
     // credentials fall back to the TTL-cached row read.
     const resolvedAuthUser =
       authUser ?? (await getAuthUserCached(db, authUserId));
+    // Drives the workspace sidebar: the team space entry renders only when
+    // the viewer holds an unexpired membership, labelled with the
+    // organization name. team_expired distinguishes "membership lapsed"
+    // (reader seat past its expiry) from "never joined" so the UI can show
+    // a renewal notice instead of silently hiding the space, and
+    // reader_expires_at lets the reader see their own seat's validity.
+    const state = await getMembershipState(db, authUserId);
+    const teamExpired =
+      state?.role === "reader" &&
+      state.expiresAt !== null &&
+      state.expiresAt.getTime() <= Date.now();
     return c.json({
       id: user.id,
       role: user.teamRole,
@@ -111,9 +124,18 @@ appApi.get("/me", async (c) => {
       name: user.name,
       email: resolvedAuthUser?.email ?? user.email,
       username: resolvedAuthUser?.username ?? user.id.replace(/^users\//, ""),
-      // Drives the workspace sidebar: the team space entry renders only when
-      // the viewer holds a membership, labelled with the organization name.
-      team: await getViewerTeamInfo(db, authUserId),
+      team:
+        state && !teamExpired
+          ? { id: state.organizationId, name: state.organizationName }
+          : null,
+      team_expired: teamExpired,
+      ...(state?.role === "reader"
+        ? {
+            reader_expires_at: state.expiresAt
+              ? state.expiresAt.toISOString()
+              : null,
+          }
+        : {}),
     });
   } catch (error) {
     return jsonError(c, error);
@@ -386,6 +408,20 @@ appApi.get("/usage/vector", async (c) => {
       userLimits,
     });
     return c.json({ ...report, plan });
+  } catch (error) {
+    return jsonError(c, error);
+  }
+});
+
+appApi.get("/usage/cloudflare", async (c) => {
+  try {
+    const { user } = await getRequestContext(c);
+    if (!isInstanceOwner(user))
+      throw new ForbiddenError("Owner access is required.");
+    const config = resolveAnalyticsConfig(c.env);
+    if (!config) return c.json({ available: false });
+    const report = await fetchCloudflareUsage(c.env);
+    return c.json({ available: true, ...report });
   } catch (error) {
     return jsonError(c, error);
   }

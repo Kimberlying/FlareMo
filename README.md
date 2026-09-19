@@ -80,6 +80,7 @@ FlareMo answers a simpler question: **Can you get a 24/7 online, resilient, glob
   - 👥 **Team**: Shared read-only with active team members.
   - 🌐 **Public**: Anonymous read-only via time-limited share links.
 - **Safe offboarding**: Removing a member triggers reliable background cleanup that purges private data while preserving team and public notes.
+- **Reader seats**: Grant a time-boxed read-only seat — guest readers, course cohorts, client delivery. Seats lapse automatically at their expiry (fail-closed at credential resolution, no cron needed). Manage them from the members page, or provision by email through `PUT /api/app/admin/team/reader` with a Personal Access Token (see `docs/team-mode.md`).
 
 ### 6. Offline First & PWA Experience
 - **Installable PWA**: Install to macOS, Windows, iOS, or Android home screen with native feel.
@@ -96,6 +97,13 @@ FlareMo answers a simpler question: **Can you get a 24/7 online, resilient, glob
 - **Bi-directional import & export**: One-click import from Memos / flomo with conflict strategies and full raw export bundles.
 
 ---
+
+### 9. 插件系统：卡片即插件
+- **五张内置卡片**：素白、日签、票根、明信片，以及自绘 canvas 的邮戳演示卡。
+- **商店与管理**：账户设置里浏览目录、一键安装（sha256 校验）、启用/停用、排序、设默认、隐藏；官方目录在 [flaremo.app/plugins](https://flaremo.app/plugins/registry.json)。
+- **可上传**：管理员可上传本地插件包——只存在于自己实例，永不外传。
+- **可创作**：`pnpm plugin:new` 生成脚手架、`pnpm plugin:check` 用与实例安装**完全相同**的规则校验、`pnpm plugins:build` 出包；document 卡是纯 JSON 排版，sandbox 卡写自己的 HTML/CSS/JS。详见 [插件文档](./docs/plugins.md)。
+- **默认安全**：卡片跑在不透明源沙箱里，**无任何网络访问**；社区/品牌插件默认关闭，管理员显式启用才可见。
 
 ## 📊 How Generous Is Cloudflare's Free Tier?
 
@@ -194,6 +202,8 @@ flowchart LR
 - **Storage**: Cloudflare R2
 - **Auth**: Better Auth (HttpOnly cookie session + revocable `memos_pat_`)
 - **AI & Search**: Workers AI, Vectorize, SQLite FTS5
+- **Plugins**: slot-based extension platform ([standard](./docs/plugin-platform-standard.md), [guide](./docs/plugins.md)); packages live in R2, sandboxed cards run without network access
+- **Plugins**: slot-based extension platform ([standard](./docs/plugin-platform-standard.md), [guide](./docs/plugins.md)); packages live in R2, sandboxed cards run without network access
 
 ---
 

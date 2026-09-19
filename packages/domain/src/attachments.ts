@@ -13,6 +13,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { requireArticle } from "./articles";
 import { ConflictError, NotFoundError, ValidationError } from "./errors";
 import { createResourceId, parseResourceName } from "./ids";
 import { getMemoById, getMemoByIdForViewer } from "./memos";
@@ -25,6 +26,7 @@ import {
 
 export type CreateAttachmentMetadataInput = {
   memoId?: string | null;
+  articleId?: string | null;
   filename: string;
   contentType?: string | null;
   size: number;
@@ -81,10 +83,18 @@ export async function createAttachmentMetadata(
   input: CreateAttachmentMetadataInput,
 ) {
   const memoId = input.memoId ? parseResourceName(input.memoId, "memos") : null;
+  const articleId = input.articleId
+    ? parseResourceName(input.articleId, "articles")
+    : null;
   const clientId = normalizeAttachmentClientId(input.clientId);
   if (memoId) {
     const memo = await getMemoById(db, user, memoId);
     assertCanEditMemo(user, memo);
+  }
+  if (articleId) {
+    // requireArticle filters by caller id, so this doubles as the ownership
+    // check.
+    await requireArticle(db, user, articleId);
   }
   if (!input.filename.trim()) {
     throw new ValidationError("Attachment filename is required");
@@ -99,6 +109,7 @@ export async function createAttachmentMetadata(
     id: createResourceId("attachments"),
     userId: user.id,
     memoId,
+    articleId,
     r2Key: input.r2Key,
     filename: input.filename,
     contentType: input.contentType ?? null,
@@ -770,7 +781,11 @@ export async function listAttachmentCleanupCandidates(
         // (both pre-deletion markers and finalize survivors), so a hard-delete
         // path that forgot the immediate marker is still caught by the cron.
         eq(attachments.state, "deleting"),
-        and(isNull(attachments.memoId), lt(attachments.createdAt, cutoff)),
+        and(
+          isNull(attachments.memoId),
+          isNull(attachments.articleId),
+          lt(attachments.createdAt, cutoff),
+        ),
       ),
     )
     .limit(100);

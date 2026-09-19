@@ -3,6 +3,7 @@ import {
   ForbiddenError,
   getFlaremoUserByAuthSessionToken,
   getFlaremoUserByAuthUserId,
+  getUserRegistrationAllowed,
   isActiveTeamMember,
   type PlanLimits,
   parseUserPlanLimits,
@@ -18,6 +19,7 @@ import {
 } from "./auth";
 import type { FlareMoEnv } from "./env";
 import { memoFilterScanLimit } from "./filter-scan-limit";
+import { resolveOauthIntegrationCached } from "./integrations/config";
 import { authenticateMemosAccessToken } from "./memos-native-auth";
 
 export type HonoBindings = {
@@ -103,6 +105,50 @@ export function getFlareMoRuntime(env: FlareMoEnv) {
     runtimeCache.set(env, runtime);
   }
   return runtime;
+}
+
+// The auth handler route rebuilds the Better Auth instance when the owner
+// changes social-provider settings (or an env-provided provider appears in a
+// fresh isolate). Cache the built instance per env; keying by the resolved
+// integration revision/ids keeps unconfigured deployments on the shared
+// default runtime auth.
+const oauthAuthCache = new WeakMap<
+  FlareMoEnv,
+  { key: string; auth: ReturnType<typeof createFlareMoAuth> }
+>();
+
+/**
+ * Auth instance for /api/auth/* with social providers wired in when the
+ * instance has them configured (env first, then the owner's encrypted D1
+ * settings). Provider config is checked against a short TTL cache; the
+ * rebuild itself only happens when the resolved config actually changes.
+ */
+export async function getFlareMoAuthHandler(env: FlareMoEnv) {
+  const runtime = getFlareMoRuntime(env);
+  const oauth = await resolveOauthIntegrationCached(env, runtime.db);
+  if (!oauth.google && !oauth.github) {
+    return runtime.auth;
+  }
+  const key =
+    oauth.revision ??
+    `env:${oauth.google?.clientId ?? ""}:${oauth.github?.clientId ?? ""}`;
+  const cached = oauthAuthCache.get(env);
+  if (cached && cached.key === key) return cached.auth;
+  let registrationOpen = true;
+  try {
+    registrationOpen = await getUserRegistrationAllowed(runtime.db);
+  } catch {
+    // Fail open: the registration toggle read must never break sign-in.
+  }
+  const auth = createFlareMoAuth(env, runtime.db, {
+    socialProviders: {
+      google: oauth.google ?? undefined,
+      github: oauth.github ?? undefined,
+    },
+    disableSocialImplicitSignUp: !registrationOpen,
+  });
+  oauthAuthCache.set(env, { key, auth });
+  return auth;
 }
 
 export async function getRequestContext(c: Context<HonoBindings>) {

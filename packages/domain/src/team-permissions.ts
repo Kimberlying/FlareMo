@@ -4,7 +4,7 @@ import { memos } from "@flaremo/db";
 import { and, eq, inArray, isNull, ne, or, type SQL, sql } from "drizzle-orm";
 import { ForbiddenError } from "./errors";
 
-export type TeamRole = "owner" | "admin" | "member";
+export type TeamRole = "owner" | "admin" | "member" | "reader";
 
 /**
  * The actor for every authorization decision: a domain user plus their role
@@ -36,6 +36,19 @@ export function isTeamOwner(user: TeamViewer | null): boolean {
 export function isTeamAdmin(user: TeamViewer | null): boolean {
   const role = teamRoleOf(user);
   return role === "owner" || role === "admin";
+}
+
+/**
+ * Readers are time-boxed read-only seats (community memberships): they browse
+ * the team space but never publish into it. Personal notes stay fully theirs.
+ */
+export function isTeamReader(user: TeamViewer | null): boolean {
+  return teamRoleOf(user) === "reader";
+}
+
+/** Whether the viewer may publish (or unpublish) memos into the team. */
+export function canPublishTeamMemo(user: TeamViewer | null): boolean {
+  return isActiveTeamMember(user) && !isTeamReader(user);
 }
 
 /**

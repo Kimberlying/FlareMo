@@ -1,0 +1,105 @@
+{
+  "specVersion": 1,
+  "root": {
+    "type": "column",
+    "style": {
+      "height": "100%",
+      "background": { "light": "#fbf9f4", "dark": "#1a1918" },
+      "color": { "light": "#262422", "dark": "#f4f1ea" },
+      "borderWidth": 1,
+      "borderColor": { "light": "#e9e4db", "dark": "#2c2a28" },
+      "borderRadius": 6,
+      "overflow": "hidden"
+    },
+    "children": [
+      {
+        "type": "row",
+        "style": {
+          "width": "100%",
+          "justify": "space-between",
+          "align": "start",
+          "paddingX": 30,
+          "paddingTop": 26
+        },
+        "children": [
+          {
+            "type": "text",
+            "text": "{date}",
+            "style": {
+              "font": {
+                "size": 11,
+                "letterSpacing": 0.5,
+                "color": { "light": "#8c857b", "dark": "#a8a196" }
+              }
+            }
+          },
+          {
+            "type": "column",
+            "style": {
+              "width": 36,
+              "height": 42,
+              "borderWidth": 1,
+              "borderColor": { "light": "#d5cdc1", "dark": "#3d3935" },
+              "borderRadius": 2,
+              "align": "center",
+              "justify": "center",
+              "opacity": 0.75
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "{day.padded}",
+                "style": {
+                  "font": {
+                    "family": "serif",
+                    "size": 13,
+                    "weight": 600,
+                    "color": { "light": "#6e665c", "dark": "#bfb7aa" }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "text": "{body}",
+        "style": {
+          "flex": 1,
+          "paddingX": 30,
+          "marginTop": 20,
+          "clamp": 13,
+          "overflow": "hidden",
+          "font": {
+            "family": "serif",
+            "size": 15,
+            "lineHeight": 1.95,
+            "letterSpacing": 0.2
+          }
+        }
+      },
+      {
+        "type": "row",
+        "style": {
+          "width": "100%",
+          "justify": "end",
+          "align": "center",
+          "paddingX": 30,
+          "paddingBottom": 24
+        },
+        "children": [
+          {
+            "type": "spacer",
+            "style": {
+              "width": 24,
+              "height": 1,
+              "background": { "light": "#d5cdc1", "dark": "#3d3935" },
+              "opacity": 0.6
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

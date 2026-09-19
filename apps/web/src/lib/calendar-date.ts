@@ -18,6 +18,12 @@ export function nextDay(key: string): string {
   return isoDay(date);
 }
 
+export function prevDay(key: string): string {
+  const date = new Date(`${key}T12:00:00`);
+  date.setDate(date.getDate() - 1);
+  return isoDay(date);
+}
+
 export function addMonths(months: number, fromKey: string): string {
   const date = new Date(`${fromKey}T12:00:00`);
   date.setDate(1);

@@ -1,0 +1,44 @@
+{
+  "specVersion": 1,
+  "id": "kosx-pack",
+  "version": "1.0.0",
+  "name": {
+    "zh-CN": "KOSX 卡片",
+    "en-US": "KOSX cards",
+    "ja": "KOSX カード",
+    "ko": "KOSX 카드",
+    "ru": "Карточки KOSX",
+    "fr": "Cartes KOSX",
+    "es": "Tarjetas KOSX",
+    "ar": "بطاقات KOSX"
+  },
+  "description": {
+    "zh-CN": "KOSX 风格的编辑体卡片：粗黑标题、信号橙点缀，源自社区贡献。",
+    "en-US": "A stark editorial card with KOSX signal-orange accents; from a community contribution."
+  },
+  "author": {
+    "name": "Kimberlying"
+  },
+  "license": "AGPL-3.0-only",
+  "defaultEnabled": false,
+  "contributes": {
+    "shareCardTemplates": [
+      {
+        "id": "kosx-editorial",
+        "kind": "document",
+        "name": {
+          "zh-CN": "KOSX",
+          "en-US": "KOSX",
+          "ja": "KOSX",
+          "ko": "KOSX",
+          "ru": "KOSX",
+          "fr": "KOSX",
+          "es": "KOSX",
+          "ar": "KOSX"
+        },
+        "document": "cards/editorial.json",
+        "preview": "cards/kosx-editorial.preview.png"
+      }
+    ]
+  }
+}

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { resetPassword } from "@/api";
 import { AuthPageFrame } from "@/components/auth-page-frame";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useI18n } from "@/i18n";
 import { errorMessage } from "@/lib/error";
 
@@ -83,13 +83,12 @@ export function ResetPage({ token }: { token: string | undefined }) {
           htmlFor="reset-new-password"
         >
           {t("auth.newPassword")}
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             disabled={isSubmitting}
             id="reset-new-password"
             minLength={MIN_PASSWORD_LENGTH}
             required
-            type="password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
           />
@@ -99,13 +98,12 @@ export function ResetPage({ token }: { token: string | undefined }) {
           htmlFor="reset-confirmation"
         >
           {t("auth.confirmPassword")}
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             disabled={isSubmitting}
             id="reset-confirmation"
             minLength={MIN_PASSWORD_LENGTH}
             required
-            type="password"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
           />

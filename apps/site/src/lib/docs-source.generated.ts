@@ -15,13 +15,17 @@ import designSystem from "../../../../docs/design-system.md?raw";
 import enAgentDeploy from "../../../../docs/en/agent-deploy.md?raw";
 import enDeploy from "../../../../docs/en/deploy.md?raw";
 import enMemosCompatibility from "../../../../docs/en/memos-compatibility.md?raw";
+import enPlugins from "../../../../docs/en/plugins.md?raw";
+import enTeamMode from "../../../../docs/en/team-mode.md?raw";
 import enUpdate from "../../../../docs/en/update.md?raw";
 import maintenance from "../../../../docs/maintenance.md?raw";
 import memosCompatibility from "../../../../docs/memos-compatibility.md?raw";
 import memosEcosystem from "../../../../docs/memos-ecosystem.md?raw";
+import plugins from "../../../../docs/plugins.md?raw";
 import productRequirements from "../../../../docs/product-requirements.md?raw";
 import release from "../../../../docs/release.md?raw";
 import semanticSearch from "../../../../docs/semantic-search.md?raw";
+import teamMode from "../../../../docs/team-mode.md?raw";
 import techStack from "../../../../docs/tech-stack.md?raw";
 import update from "../../../../docs/update.md?raw";
 
@@ -99,6 +103,11 @@ const ZH_DOCS: Record<
     group: "compatibility",
     body: memosEcosystem,
   },
+  plugins: {
+    title: "插件系统",
+    group: "compatibility",
+    body: plugins,
+  },
   "product-requirements": {
     title: "产品需求梳理（对标 flomo）",
     group: "reference",
@@ -113,6 +122,11 @@ const ZH_DOCS: Record<
     title: "语义搜索架构",
     group: "concept",
     body: semanticSearch,
+  },
+  "team-mode": {
+    title: "团队模式与读者席位",
+    group: "concept",
+    body: teamMode,
   },
   "tech-stack": {
     title: "FlareMo 技术栈",
@@ -144,6 +158,16 @@ const EN_DOCS: Record<
     title: "Memos Compatibility Matrix",
     group: "compatibility",
     body: enMemosCompatibility,
+  },
+  plugins: {
+    title: "Plugin System",
+    group: "compatibility",
+    body: enPlugins,
+  },
+  "team-mode": {
+    title: "Team Mode & Reader Seats",
+    group: "concept",
+    body: enTeamMode,
   },
   update: {
     title: "Updating FlareMo",
@@ -230,10 +254,14 @@ const DESCRIPTIONS_ZH: Record<string, string> = {
   maintenance: "运维手册：备份、灾备演练、迁移、回滚。",
   "memos-compatibility": "/api/v1 子集与四类 memo 事件的 webhook outbox 边界。",
   "memos-ecosystem": "已验证的 Memos 第三方客户端与配置示例。",
+  plugins:
+    "分享卡片插件：商店安装、自行上传、管理员挑选排序；作者用 plugin:check / plugin:new 开发。",
   "product-requirements": "对标 flomo 的需求池与依赖关系，决策输入而非承诺。",
   release: "发版流程：tag、CHANGELOG、migration notes、升级说明。",
   "semantic-search":
     "Vectorize 存派生 embedding，D1 仍是事实源；命中回 D1 校验 ACL。",
+  "team-mode":
+    "团队协作模型：owner/admin/member 角色、三级可见性、读者席位与机器开通接口。",
   "tech-stack": "已确定的技术栈与版本约束。",
   update: "升级 FlareMo：上游同步 workflow、PR 流程、回退。",
 };
@@ -246,6 +274,10 @@ const DESCRIPTIONS_EN: Record<string, string> = {
   "memos-compatibility":
     "The /api/v1 subset and the four memo-event webhook outbox boundaries.",
   update: "Upgrading FlareMo: upstream sync workflow, PR flow, and rollbacks.",
+  plugins:
+    "Share-card plugins: install from the store, upload your own, curate per instance; authors build with plugin:check / plugin:new.",
+  "team-mode":
+    "Team collaboration model: owner/admin/member roles, 3-tier visibility, time-boxed reader seats, and the machine provisioning API.",
   "agent-ingestion":
     "Designing Agent, Telegram, and IM capture paths and conflict policies. (Chinese source; English translation pending.)",
   "agent-memory":

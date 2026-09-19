@@ -4,6 +4,7 @@ import { recoverOwner } from "@/api";
 import { AuthPageFrame } from "@/components/auth-page-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useI18n } from "@/i18n";
 import { errorMessage } from "@/lib/error";
 
@@ -93,13 +94,12 @@ export function RecoverPage() {
           htmlFor="recover-new-password"
         >
           {t("auth.newPassword")}
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             disabled={isSubmitting}
             id="recover-new-password"
             minLength={MIN_PASSWORD_LENGTH}
             required
-            type="password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
           />
@@ -109,13 +109,12 @@ export function RecoverPage() {
           htmlFor="recover-confirmation"
         >
           {t("auth.confirmPassword")}
-          <Input
+          <PasswordInput
             autoComplete="new-password"
             disabled={isSubmitting}
             id="recover-confirmation"
             minLength={MIN_PASSWORD_LENGTH}
             required
-            type="password"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
           />

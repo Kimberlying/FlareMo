@@ -1,14 +1,18 @@
-import type { MemoRow, UserRow } from "@flaremo/db";
+import type { MemoRow } from "@flaremo/db";
 import { describe, expect, it } from "vitest";
 import {
   canDeleteMemo,
   canEditMemo,
   canGovernMemo,
+  canPublishTeamMemo,
   canReadMemo,
   type TeamViewer,
 } from "./team-permissions";
 
-function user(id: string, role: "owner" | "admin" | "member"): TeamViewer {
+function user(
+  id: string,
+  role: "owner" | "admin" | "member" | "reader",
+): TeamViewer {
   return {
     id,
     email: `${id}@example.com`,
@@ -103,6 +107,29 @@ describe("team memo permissions", () => {
     expect(canEditMemo(author, memo("private"))).toBe(true);
     expect(canEditMemo(author, memo("protected"))).toBe(true);
     expect(canGovernMemo(author, memo("protected"))).toBe(true);
+  });
+
+  it("lets readers read team memos but never publish, govern, or edit", () => {
+    const reader = user("users/reader", "reader");
+    expect(canReadMemo(reader, memo("protected"))).toBe(true);
+    expect(canReadMemo(reader, memo("public"))).toBe(true);
+    // The read-only seat: publishing is denied at resolveMemoTeamId, and the
+    // governance ladder stays closed because a reader is never an admin.
+    expect(canPublishTeamMemo(reader)).toBe(false);
+    expect(canEditMemo(reader, memo("protected"))).toBe(false);
+    expect(canGovernMemo(reader, memo("protected"))).toBe(false);
+    expect(canDeleteMemo(reader, memo("protected"))).toBe(false);
+    // Authorship is unaffected: a reader's own personal notes stay theirs.
+    expect(canEditMemo(user("users/a", "reader"), memo("private"))).toBe(true);
+  });
+
+  it("keeps publishing open for every non-reader member", () => {
+    for (const actor of [author, member, admin, owner]) {
+      expect(canPublishTeamMemo(actor)).toBe(true);
+    }
+    // The predicate is role-level only; a non-member's team publish attempt
+    // still fails in resolveMemoTeamId because no membership resolves a team.
+    expect(canPublishTeamMemo(userOutsideTeam("users/out"))).toBe(true);
   });
 
   it("rejects removed members", () => {

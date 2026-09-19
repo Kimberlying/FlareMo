@@ -18,6 +18,9 @@ import { zhCN } from "./i18n/messages/zh-CN";
 
 export type { TranslationKey } from "./i18n/key";
 
+/** Interpolation values for translated messages ({count}, {date}, …). */
+export type TranslationParams = Record<string, string | number>;
+
 /** App locales mirror the marketing site: en/zh/ja/fr/es/ko/ru/ar. */
 export type Locale =
   | "zh-CN"
@@ -60,8 +63,6 @@ export const SUPPORTED_LOCALES = Object.keys(messages) as Locale[];
 export function isRtlLocale(locale: Locale): boolean {
   return locale === "ar";
 }
-
-type TranslationParams = Record<string, string | number>;
 
 type I18nContextValue = {
   locale: Locale;

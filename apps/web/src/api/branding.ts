@@ -17,6 +17,8 @@ export type BrandingInfo = {
   accent_hex?: string | null;
   mark_light_url: string | null;
   mark_dark_url: string | null;
+  favicon_url?: string | null;
+  favicon_content_type?: string | null;
 };
 
 export type AdminBranding = {
@@ -25,9 +27,12 @@ export type AdminBranding = {
   accent_hex: string | null;
   mark_light_url: string | null;
   mark_dark_url: string | null;
+  favicon_url: string | null;
+  favicon_content_type: string | null;
 };
 
 export type BrandingMarkVariant = "light" | "dark";
+export type BrandingAssetKind = BrandingMarkVariant | "favicon";
 
 async function brandingErrorMessage(response: Response, fallback: string) {
   try {
@@ -107,4 +112,34 @@ export async function clearAdminBrandingMark(variant: BrandingMarkVariant) {
     );
   }
   return (await response.json()) as { removed: boolean; variant: string };
+}
+
+export async function uploadAdminBrandingFavicon(file: File) {
+  const bytes = await file.arrayBuffer();
+  const response = await fetch("/api/app/admin/branding/favicon", {
+    method: "PUT",
+    headers: { "content-type": file.type || "application/octet-stream" },
+    body: bytes,
+  });
+  if (!response.ok) {
+    throw new Error(
+      await brandingErrorMessage(
+        response,
+        "Failed to upload the favicon. Supported: png, webp, svg, ico.",
+      ),
+    );
+  }
+  return (await response.json()) as { saved: boolean };
+}
+
+export async function clearAdminBrandingFavicon() {
+  const response = await fetch("/api/app/admin/branding/favicon", {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error(
+      await brandingErrorMessage(response, "Failed to remove the favicon."),
+    );
+  }
+  return (await response.json()) as { removed: boolean };
 }

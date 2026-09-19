@@ -1,4 +1,4 @@
-import { RefreshCcwIcon } from "lucide-react";
+import { RefreshCcwIcon, ShieldCheckIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -11,7 +11,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +19,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import type { TranslationKey } from "@/i18n";
+import { SettingsRow, SettingsSectionGroup } from "./apple-settings-ui";
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -54,7 +55,6 @@ type SecurityPanelProps = {
   onDeleteAccount: () => Promise<void>;
 };
 
-/** Closes a dialog only after a submit succeeds: pending -> idle with no error. */
 function useCloseOnSuccess(
   isPending: boolean,
   hasError: boolean,
@@ -107,76 +107,51 @@ export function SecurityPanel({
   );
 
   return (
-    <>
-      {emailProviderDisabled && (
-        <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          {t("auth.noEmailProviderNote")}
-        </p>
-      )}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("auth.passwordTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-end gap-3">
-          <Button
-            size="sm"
-            type="button"
-            variant="outline"
-            onClick={() => setPasswordOpen(true)}
-          >
-            <RefreshCcwIcon data-icon="inline-start" />
-            {t("auth.changePassword")}
-          </Button>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("auth.emailTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-sm">{currentEmail}</p>
-            <Button
-              size="sm"
-              type="button"
-              variant="outline"
-              onClick={() => setEmailOpen(true)}
-            >
-              <RefreshCcwIcon data-icon="inline-start" />
-              {t("auth.changeEmail")}
-            </Button>
-          </div>
-          {emailVerificationPending && (
-            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
-              {t("auth.emailChangeVerificationSent")}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex flex-col gap-5">
+      <SettingsSectionGroup
+        title={t("settings.nav.security")}
+        footer={
+          emailProviderDisabled
+            ? t("auth.noEmailProviderNote")
+            : emailVerificationPending
+              ? t("auth.emailChangeVerificationSent")
+              : undefined
+        }
+      >
+        <SettingsRow
+          icon={ShieldCheckIcon}
+          label={t("auth.emailTitle")}
+          value={currentEmail || "—"}
+          chevron
+          onClick={() => setEmailOpen(true)}
+        />
+        <SettingsRow
+          icon={ShieldCheckIcon}
+          label={t("auth.passwordTitle")}
+          value="••••••••"
+          chevron
+          onClick={() => setPasswordOpen(true)}
+        />
+      </SettingsSectionGroup>
+
       {!isOwner && (
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle>{t("auth.deleteAccountTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-end gap-3">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setDeleteOpen(true)}
-            >
-              {t("auth.deleteAccountSubmit")}
-            </Button>
-          </CardContent>
-        </Card>
+        <SettingsSectionGroup title={t("common.actions")}>
+          <SettingsRow
+            destructive
+            label={t("auth.deleteAccountTitle")}
+            onClick={() => setDeleteOpen(true)}
+          />
+        </SettingsSectionGroup>
       )}
 
+      {/* Password Change Dialog */}
       <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("auth.passwordTitle")}</DialogTitle>
           </DialogHeader>
           <form
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               void onPasswordSubmit();
@@ -187,12 +162,11 @@ export function SecurityPanel({
               htmlFor="account-current-password"
             >
               {t("auth.currentPassword")}
-              <Input
+              <PasswordInput
                 autoComplete="current-password"
                 disabled={changePasswordIsPending}
                 id="account-current-password"
                 required
-                type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
               />
@@ -202,13 +176,12 @@ export function SecurityPanel({
               htmlFor="account-new-password"
             >
               {t("auth.newPassword")}
-              <Input
+              <PasswordInput
                 autoComplete="new-password"
                 disabled={changePasswordIsPending}
                 id="account-new-password"
                 minLength={MIN_PASSWORD_LENGTH}
                 required
-                type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
               />
@@ -218,13 +191,12 @@ export function SecurityPanel({
               htmlFor="account-password-confirmation"
             >
               {t("auth.confirmPassword")}
-              <Input
+              <PasswordInput
                 autoComplete="new-password"
                 disabled={changePasswordIsPending}
                 id="account-password-confirmation"
                 minLength={MIN_PASSWORD_LENGTH}
                 required
-                type="password"
                 value={newPasswordConfirmation}
                 onChange={(event) =>
                   setNewPasswordConfirmation(event.target.value)
@@ -236,7 +208,7 @@ export function SecurityPanel({
                 {passwordError}
               </p>
             )}
-            <DialogFooter>
+            <DialogFooter className="mt-2">
               <Button
                 disabled={changePasswordIsPending}
                 type="button"
@@ -252,25 +224,42 @@ export function SecurityPanel({
                     data-icon="inline-start"
                   />
                 )}
-                {changePasswordIsPending ? t("auth.saving") : t("common.save")}
+                {t("auth.changePassword")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Email Change Dialog */}
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("auth.emailTitle")}</DialogTitle>
           </DialogHeader>
           <form
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-4"
             onSubmit={(event) => {
               event.preventDefault();
               void onEmailSubmit();
             }}
           >
+            <label
+              className="flex flex-col gap-1.5 text-sm font-medium"
+              htmlFor="account-email-password"
+            >
+              {t("auth.currentPassword")}
+              <PasswordInput
+                autoComplete="current-password"
+                disabled={changeEmailIsPending}
+                id="account-email-password"
+                required
+                value={emailCurrentPassword}
+                onChange={(event) =>
+                  setEmailCurrentPassword(event.target.value)
+                }
+              />
+            </label>
             <label
               className="flex flex-col gap-1.5 text-sm font-medium"
               htmlFor="account-new-email"
@@ -287,29 +276,12 @@ export function SecurityPanel({
                 onChange={(event) => setNewEmail(event.target.value)}
               />
             </label>
-            <label
-              className="flex flex-col gap-1.5 text-sm font-medium"
-              htmlFor="account-email-current-password"
-            >
-              {t("auth.currentPassword")}
-              <Input
-                autoComplete="current-password"
-                disabled={changeEmailIsPending}
-                id="account-email-current-password"
-                required
-                type="password"
-                value={emailCurrentPassword}
-                onChange={(event) =>
-                  setEmailCurrentPassword(event.target.value)
-                }
-              />
-            </label>
             {emailError && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-sm text-destructive">
                 {emailError}
               </p>
             )}
-            <DialogFooter>
+            <DialogFooter className="mt-2">
               <Button
                 disabled={changeEmailIsPending}
                 type="button"
@@ -325,39 +297,33 @@ export function SecurityPanel({
                     data-icon="inline-start"
                   />
                 )}
-                {changeEmailIsPending ? t("auth.saving") : t("common.save")}
+                {t("auth.changeEmail")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Account Alert Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("auth.deleteAccountTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("auth.deleteAccountDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void onDeleteAccount();
-            }}
-          >
+          <div className="flex flex-col gap-3 py-2">
             <label
               className="flex flex-col gap-1.5 text-sm font-medium"
-              htmlFor="account-delete-password"
+              htmlFor="delete-account-password"
             >
               {t("auth.deleteAccountPassword")}
-              <Input
+              <PasswordInput
                 autoComplete="current-password"
                 disabled={deleteAccountIsPending}
-                id="account-delete-password"
+                id="delete-account-password"
                 required
-                type="password"
                 value={deletePassword}
                 onChange={(event) => setDeletePassword(event.target.value)}
               />
@@ -367,25 +333,38 @@ export function SecurityPanel({
                 {deleteError}
               </p>
             )}
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleteAccountIsPending}>
-                {t("common.cancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction
-                disabled={deleteAccountIsPending || deletePassword.length === 0}
-                onClick={(event) => {
-                  event.preventDefault();
-                  void onDeleteAccount();
-                }}
-              >
-                {deleteAccountIsPending
-                  ? t("auth.deleteAccountSubmitting")
-                  : t("auth.deleteAccountSubmit")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </form>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleteAccountIsPending}
+              variant="ghost"
+              onClick={() => {
+                setDeletePassword("");
+              }}
+            >
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteAccountIsPending || !deletePassword}
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                void onDeleteAccount().then(() => {
+                  if (!deleteError) setDeleteOpen(false);
+                });
+              }}
+            >
+              {deleteAccountIsPending && (
+                <RefreshCcwIcon
+                  className="animate-spin"
+                  data-icon="inline-start"
+                />
+              )}
+              {t("auth.deleteAccountSubmit")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

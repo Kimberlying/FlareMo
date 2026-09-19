@@ -82,6 +82,7 @@ La respuesta es rotundamente sí:
   - 👥 **Equipo**: Lectura compartida con los miembros activos del equipo.
   - 🌐 **Público**: Enlaces públicos revocables con fecha de caducidad.
 - **Salida segura**: Al retirar a un miembro, sus datos privados se eliminan físicamente mientras que el contenido de equipo se preserva.
+- **Plazas de lector**: Concede un asiento de solo lectura con caducidad — lectores invitados, alumnos, entregas a clientes. Expira automáticamente (fail-closed al resolver la credencial, sin cron). Géstionalas desde la página de miembros o aprovisiónalas por email mediante `PUT /api/app/admin/team/reader` con un token de acceso personal (ver `docs/team-mode.md`).
 
 ### 6. Modo sin conexión y experiencia PWA
 - **PWA instalable**: Instala FlareMo en tu ordenador o móvil con tacto y velocidad de app nativa.
@@ -98,6 +99,13 @@ La respuesta es rotundamente sí:
 - **Importación y exportación**: Migración en un clic de paquetes Memos y flomo con resolución de conflictos.
 
 ---
+
+### 9. Sistema de complementos: las tarjetas son complementos
+- **Cinco tarjetas incluidas**: Sencilla, Diaria, Billete, Postal y un Matasellos dibujado con canvas.
+- **Tienda y gestión**: en los ajustes — explorar directorios, instalación en un clic (verificación SHA-256), activar/desactivar, orden, tarjeta predeterminada, ocultar. El directorio oficial: [flaremo.app/plugins](https://flaremo.app/plugins/registry.json).
+- **Sube los tuyos**: un administrador puede instalar un paquete local — solo existe en esa instancia y nunca se envía a ningún sitio.
+- **Herramientas de autor**: `pnpm plugin:new` genera el esqueleto, `pnpm plugin:check` valida con **exactamente las reglas que se aplican al instalar**, `pnpm plugins:build` empaqueta. Las tarjetas document son maquetación JSON pura; las sandbox ejecutan tu propio HTML/CSS/JS. Ver la [guía de complementos](./docs/plugins.md).
+- **Seguro por defecto**: las tarjetas se ejecutan en un sandbox de origen opaco y **sin acceso a la red**; los paquetes de comunidad y de marca permanecen desactivados hasta que un administrador los active.
 
 ## 📊 ¿Cuánto rinde el plan gratuito de Cloudflare?
 

@@ -1,0 +1,312 @@
+{
+  "specVersion": 1,
+  "name": "FlareMo 官方目录",
+  "updatedAt": "2026-09-18T13:33:52.160Z",
+  "plugins": [
+    {
+      "id": "flaremo-cards",
+      "version": "1.2.0",
+      "tier": "official",
+      "name": {
+        "zh-CN": "基础卡片",
+        "en-US": "Basic cards",
+        "ja": "ベーシックカード",
+        "ko": "기본 카드",
+        "ru": "Базовые карточки",
+        "fr": "Cartes de base",
+        "es": "Tarjetas básicas",
+        "ar": "البطاقات الأساسية"
+      },
+      "description": {
+        "zh-CN": "素白、日签、票根、明信片、语录、思考笺、素墨、暮火——精心打磨的内置卡片。",
+        "en-US": "Plain, daily, ticket, postcard, quote, mono, zen, and ember — crafted cards bundled with FlareMo."
+      },
+      "author": {
+        "name": "FlareMo"
+      },
+      "license": "AGPL-3.0-only",
+      "defaultEnabled": true,
+      "preview": "flaremo-cards/preview.png",
+      "contributes": {
+        "shareCardTemplates": [
+          {
+            "id": "plain",
+            "kind": "document",
+            "name": {
+              "zh-CN": "素白",
+              "en-US": "Plain",
+              "ja": "素白",
+              "ko": "소백",
+              "ru": "Простой",
+              "fr": "Blanc",
+              "es": "Sencillo",
+              "ar": "أبيض"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "preview": "flaremo-cards/plain.png"
+          },
+          {
+            "id": "daily",
+            "kind": "document",
+            "name": {
+              "zh-CN": "日签",
+              "en-US": "Daily",
+              "ja": "日签",
+              "ko": "데일리",
+              "ru": "Ежедневник",
+              "fr": "Citation du jour",
+              "es": "Diario",
+              "ar": "يومية"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "preview": "flaremo-cards/daily.png"
+          },
+          {
+            "id": "ticket",
+            "kind": "document",
+            "name": {
+              "zh-CN": "票根",
+              "en-US": "Ticket",
+              "ja": "票根",
+              "ko": "티켓",
+              "ru": "Билет",
+              "fr": "Ticket",
+              "es": "Billete",
+              "ar": "تذكرة"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "preview": "flaremo-cards/ticket.png"
+          },
+          {
+            "id": "postcard",
+            "kind": "document",
+            "name": {
+              "zh-CN": "明信片",
+              "en-US": "Postcard",
+              "ja": "ポストカード",
+              "ko": "엽서",
+              "ru": "Открытка",
+              "fr": "Carte postale",
+              "es": "Postal",
+              "ar": "بطاقة بريدية"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "preview": "flaremo-cards/postcard.png"
+          },
+          {
+            "id": "quote",
+            "kind": "document",
+            "name": {
+              "zh-CN": "语录",
+              "en-US": "Quote",
+              "ja": "語録",
+              "ko": "어록",
+              "ru": "Цитата",
+              "fr": "Citation",
+              "es": "Cita",
+              "ar": "اقتباس"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            }
+          },
+          {
+            "id": "mono",
+            "kind": "document",
+            "name": {
+              "zh-CN": "思考笺",
+              "en-US": "Mono",
+              "ja": "思考箋",
+              "ko": "생각 노트",
+              "ru": "Заметка Mono",
+              "fr": "Feuille Mono",
+              "es": "Nota Mono",
+              "ar": "مذكرة مونو"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            }
+          },
+          {
+            "id": "zen",
+            "kind": "document",
+            "name": {
+              "zh-CN": "素墨",
+              "en-US": "Zen",
+              "ja": "素墨",
+              "ko": "소묵",
+              "ru": "Дзен",
+              "fr": "Zen",
+              "es": "Zen",
+              "ar": "زن"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            }
+          },
+          {
+            "id": "ember",
+            "kind": "document",
+            "name": {
+              "zh-CN": "暮火",
+              "en-US": "Ember",
+              "ja": "残火",
+              "ko": "잔불",
+              "ru": "Уголек",
+              "fr": "Braise",
+              "es": "Ascuas",
+              "ar": "جمرة"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            }
+          }
+        ]
+      },
+      "artifact": {
+        "url": "flaremo-cards/flaremo-cards-1.2.0.zip",
+        "sha256": "ec6bc7c2904f4c7ead2e661e88ad51973b2aabb4ef42fa3f03e74d0cd63079e3",
+        "size": 198849
+      }
+    },
+    {
+      "id": "sandbox-demo",
+      "version": "1.0.0",
+      "tier": "official",
+      "name": {
+        "zh-CN": "沙箱示例",
+        "en-US": "Sandbox demo",
+        "ja": "サンドボックス例",
+        "ko": "샌드박스 예시",
+        "ru": "Пример песочницы",
+        "fr": "Démo sandbox",
+        "es": "Demo sandbox",
+        "ar": "عرض الصندوق الرملي"
+      },
+      "description": {
+        "zh-CN": "一张用自由 HTML/Canvas 绘制的邮戳卡，演示沙箱插件能力。",
+        "en-US": "A postmark card drawn with free-form HTML/Canvas, demonstrating sandbox plugins."
+      },
+      "author": {
+        "name": "FlareMo"
+      },
+      "license": "AGPL-3.0-only",
+      "defaultEnabled": true,
+      "preview": "sandbox-demo/preview.png",
+      "contributes": {
+        "shareCardTemplates": [
+          {
+            "id": "stamp",
+            "kind": "sandbox",
+            "name": {
+              "zh-CN": "邮戳",
+              "en-US": "Postmark",
+              "ja": "消印",
+              "ko": "소인",
+              "ru": "Штемпель",
+              "fr": "Cachet",
+              "es": "Matasellos",
+              "ar": "ختم بريدي"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "options": [
+              {
+                "key": "accent",
+                "type": "color",
+                "label": {
+                  "zh-CN": "邮戳颜色",
+                  "en-US": "Postmark color",
+                  "ja": "消印の色",
+                  "ko": "소인 색상",
+                  "ru": "Цвет штемпеля",
+                  "fr": "Couleur du cachet",
+                  "es": "Color del matasellos",
+                  "ar": "لون الختم"
+                },
+                "default": "#c2410c"
+              }
+            ],
+            "preview": "sandbox-demo/stamp.png"
+          }
+        ]
+      },
+      "artifact": {
+        "url": "sandbox-demo/sandbox-demo-1.0.0.zip",
+        "sha256": "66da151f48c6590f4671e07585d2362b6c4828b961bfa999b45971a8d258e054",
+        "size": 111325
+      }
+    },
+    {
+      "id": "kosx-pack",
+      "version": "1.0.0",
+      "tier": "community",
+      "name": {
+        "zh-CN": "KOSX 卡片",
+        "en-US": "KOSX cards",
+        "ja": "KOSX カード",
+        "ko": "KOSX 카드",
+        "ru": "Карточки KOSX",
+        "fr": "Cartes KOSX",
+        "es": "Tarjetas KOSX",
+        "ar": "بطاقات KOSX"
+      },
+      "description": {
+        "zh-CN": "KOSX 风格的编辑体卡片：粗黑标题、信号橙点缀，源自社区贡献。",
+        "en-US": "A stark editorial card with KOSX signal-orange accents; from a community contribution."
+      },
+      "author": {
+        "name": "Kimberlying"
+      },
+      "license": "AGPL-3.0-only",
+      "defaultEnabled": false,
+      "preview": "kosx-pack/preview.png",
+      "contributes": {
+        "shareCardTemplates": [
+          {
+            "id": "kosx-editorial",
+            "kind": "document",
+            "name": {
+              "zh-CN": "KOSX",
+              "en-US": "KOSX",
+              "ja": "KOSX",
+              "ko": "KOSX",
+              "ru": "KOSX",
+              "fr": "KOSX",
+              "es": "KOSX",
+              "ar": "KOSX"
+            },
+            "size": {
+              "width": 340,
+              "height": 420
+            },
+            "preview": "kosx-pack/kosx-editorial.png"
+          }
+        ]
+      },
+      "artifact": {
+        "url": "kosx-pack/kosx-pack-1.0.0.zip",
+        "sha256": "72d1a0dfc153a493061ef6ec2b4d6d2a707f7617d69b2084ac185c1623f79ff5",
+        "size": 100082
+      }
+    }
+  ]
+}

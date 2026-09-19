@@ -16,7 +16,8 @@
     "@flaremo/contracts": "workspace:*",
     "@flaremo/db": "workspace:*",
     "@marcbachmann/cel-js": "8.0.0",
-    "drizzle-orm": "^0.45.1"
+    "drizzle-orm": "^0.45.1",
+    "transliteration": "^2.6.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

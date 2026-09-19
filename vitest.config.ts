@@ -22,7 +22,12 @@ export default defineConfig({
       // Advisory only — intentionally NOT wired into CI; full-suite coverage
       // runs cost minutes and the unit gate (pnpm test) stays fast.
       provider: "v8",
-      include: ["apps/web/src/**", "apps/worker/src/**", "packages/*/src/**"],
+      include: [
+        "apps/web/src/**",
+        "apps/worker/src/**",
+        "packages/*/src/**",
+        "plugins/src/**",
+      ],
       exclude: [
         "**/node_modules/**",
         "**/dist/**",

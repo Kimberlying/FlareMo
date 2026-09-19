@@ -84,6 +84,7 @@ export type ResolvedBranding = {
   accent: BrandingAccent;
   accentHex: string | null;
   marks: { light: BrandingMark | null; dark: BrandingMark | null };
+  favicon: BrandingMark | null;
 };
 
 type StoredBranding = {
@@ -94,16 +95,39 @@ type StoredBranding = {
     light?: BrandingMark | null;
     dark?: BrandingMark | null;
   };
+  favicon?: BrandingMark | null;
 };
 
 export function brandingMarkR2Key(variant: BrandingMarkVariant): string {
   return `${BRANDING_R2_PREFIX}mark-${variant}`;
 }
 
+export function brandingFaviconR2Key(): string {
+  return `${BRANDING_R2_PREFIX}favicon`;
+}
+
 export function isValidBrandingContentType(
   contentType: string | null | undefined,
 ): contentType is (typeof BRANDING_MARK_CONTENT_TYPES)[number] {
   return BRANDING_MARK_CONTENT_TYPES.some(
+    (value) => value === contentType?.toLowerCase().trim(),
+  );
+}
+
+/**
+ * Favicons additionally accept .ico — browsers render it even though the
+ * upload picker mostly sees png/svg.
+ */
+export const BRANDING_FAVICON_CONTENT_TYPES = [
+  ...BRANDING_MARK_CONTENT_TYPES,
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+] as const;
+
+export function isValidBrandingFaviconContentType(
+  contentType: string | null | undefined,
+): contentType is (typeof BRANDING_FAVICON_CONTENT_TYPES)[number] {
+  return BRANDING_FAVICON_CONTENT_TYPES.some(
     (value) => value === contentType?.toLowerCase().trim(),
   );
 }
@@ -118,10 +142,12 @@ function readStoredBranding(value: unknown): StoredBranding {
 function normalizeMark(value: unknown): BrandingMark | null {
   if (typeof value !== "object" || value === null) return null;
   const mark = value as Record<string, unknown>;
+  // The favicon carries the same BrandingMark shape but also accepts .ico
+  // content types, so validate against the wider favicon whitelist.
   if (
     typeof mark.r2_key !== "string" ||
     !mark.r2_key.startsWith(BRANDING_R2_PREFIX) ||
-    !isValidBrandingContentType(
+    !isValidBrandingFaviconContentType(
       typeof mark.content_type === "string" ? mark.content_type : null,
     )
   ) {
@@ -155,6 +181,7 @@ export async function getBranding(db: FlareMoDb): Promise<ResolvedBranding> {
       accent: DEFAULT_BRANDING_ACCENT,
       accentHex: null,
       marks: { light: null, dark: null },
+      favicon: null,
     };
   }
   const stored = await getStoredSetting(db, owner, BRANDING_SETTING_KEY);
@@ -168,6 +195,7 @@ export async function getBranding(db: FlareMoDb): Promise<ResolvedBranding> {
       light: normalizeMark(value.marks?.light),
       dark: normalizeMark(value.marks?.dark),
     },
+    favicon: normalizeMark(value.favicon),
   };
 }
 
@@ -197,6 +225,7 @@ export async function setBrandingProductName(
       light: normalizeMark(value.marks?.light),
       dark: normalizeMark(value.marks?.dark),
     },
+    favicon: normalizeMark(value.favicon),
   };
   await upsertStoredSetting(db, owner, BRANDING_SETTING_KEY, next);
   return getBranding(db);
@@ -245,6 +274,7 @@ export async function setBrandingAccent(
       light: normalizeMark(value.marks?.light),
       dark: normalizeMark(value.marks?.dark),
     },
+    favicon: normalizeMark(value.favicon),
   };
   await upsertStoredSetting(db, owner, BRANDING_SETTING_KEY, next);
   return getBranding(db);
@@ -294,5 +324,48 @@ export async function clearBrandingMark(
     marks: { ...value.marks, [variant]: null },
   };
   await upsertStoredSetting(db, owner, BRANDING_SETTING_KEY, next);
+  return stale?.r2_key ?? null;
+}
+
+/**
+ * Record a freshly uploaded favicon. The caller stores the R2 object itself
+ * (keyed by `brandingFaviconR2Key()`) and passes back the content type.
+ */
+export async function upsertBrandingFavicon(
+  db: FlareMoDb,
+  contentType: string,
+): Promise<ResolvedBranding> {
+  if (!isValidBrandingFaviconContentType(contentType)) {
+    throw new ValidationError("Unsupported favicon content type.");
+  }
+  const owner = await getFlaremoUserById(db, OWNER_FLAREMO_USER_ID);
+  if (!owner) throw new NotFoundError("Owner not found");
+  const stored = await getStoredSetting(db, owner, BRANDING_SETTING_KEY);
+  const value = readStoredBranding(stored?.value);
+  const favicon: BrandingMark = {
+    r2_key: brandingFaviconR2Key(),
+    content_type: contentType.toLowerCase().trim(),
+    updated_at: new Date().toISOString(),
+  };
+  await upsertStoredSetting(db, owner, BRANDING_SETTING_KEY, {
+    ...value,
+    favicon,
+  });
+  return getBranding(db);
+}
+
+/** Remove a custom favicon; returns the stale R2 key for the caller to delete. */
+export async function clearBrandingFavicon(
+  db: FlareMoDb,
+): Promise<string | null> {
+  const owner = await getFlaremoUserById(db, OWNER_FLAREMO_USER_ID);
+  if (!owner) throw new NotFoundError("Owner not found");
+  const stored = await getStoredSetting(db, owner, BRANDING_SETTING_KEY);
+  const value = readStoredBranding(stored?.value);
+  const stale = normalizeMark(value.favicon);
+  await upsertStoredSetting(db, owner, BRANDING_SETTING_KEY, {
+    ...value,
+    favicon: null,
+  });
   return stale?.r2_key ?? null;
 }
