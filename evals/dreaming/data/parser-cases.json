@@ -1,0 +1,101 @@
+{
+  "description": "Raw model outputs replayed through the production createDreamingExtractor (apps/worker/src/memory-dreaming.ts) via a fake AI binding. expected_kept = how many candidates a careful reviewer would expect to survive parsing, i.e. the number of well-formed, valid facts present in the raw text. Covers formats small instruct models commonly produce (code fences, preambles, trailing notes, trailing commas, wrapper objects) and short CJK facts that hit the 8-character minimum.",
+  "labeler": "draft:claude",
+  "cases": [
+    {
+      "id": "p01",
+      "category": "clean_json",
+      "raw": "[{\"content\":\"Kim lives in Melbourne, Australia.\",\"kind\":\"fact\"},{\"content\":\"Kim prefers deploying side projects on Cloudflare Workers.\",\"kind\":\"preference\"}]",
+      "expected_kept": 2
+    },
+    {
+      "id": "p02",
+      "category": "code_fence",
+      "raw": "```json\n[{\"content\":\"Kim lives in Melbourne, Australia.\"}]\n```",
+      "expected_kept": 1
+    },
+    {
+      "id": "p03",
+      "category": "preamble",
+      "raw": "Here are the durable facts I found:\n[{\"content\":\"Kim lives in Melbourne, Australia.\"}]",
+      "expected_kept": 1
+    },
+    {
+      "id": "p04",
+      "category": "trailing_note_with_brackets",
+      "raw": "[{\"content\":\"Kim lives in Melbourne, Australia.\"},{\"content\":\"Kim prefers deploying side projects on Cloudflare Workers.\"}]\nNote: facts are taken from sources [1] and [2].",
+      "expected_kept": 2
+    },
+    {
+      "id": "p05",
+      "category": "trailing_comma",
+      "raw": "[{\"content\":\"Kim lives in Melbourne, Australia.\"},{\"content\":\"Kim prefers deploying side projects on Cloudflare Workers.\"},]",
+      "expected_kept": 2
+    },
+    {
+      "id": "p06",
+      "category": "wrapper_object",
+      "raw": "{\"candidates\":[{\"content\":\"Kim lives in Melbourne, Australia.\"}]}",
+      "expected_kept": 1
+    },
+    {
+      "id": "p07",
+      "category": "one_bad_item_poisons_batch",
+      "raw": "[{\"content\":\"Kim lives in Melbourne, Australia.\"},{\"content\":\"Kim prefers deploying side projects on Cloudflare Workers.\"},{\"content\":\"Kim's X account focuses on AI products.\", \"tags\": [\"x\", \"ai\"],}]",
+      "expected_kept": 3
+    },
+    {
+      "id": "p08",
+      "category": "empty_array",
+      "raw": "[]",
+      "expected_kept": 0
+    },
+    {
+      "id": "p09",
+      "category": "plain_refusal_text",
+      "raw": "Nothing in these sources is worth remembering long-term.",
+      "expected_kept": 0
+    },
+    {
+      "id": "p10",
+      "category": "short_cjk_fact",
+      "raw": "[{\"content\":\"用户不吃香菜\",\"kind\":\"preference\"}]",
+      "expected_kept": 1,
+      "note": "6 characters, a complete self-contained Chinese preference."
+    },
+    {
+      "id": "p11",
+      "category": "short_cjk_fact",
+      "raw": "[{\"content\":\"用户住在墨尔本\",\"kind\":\"fact\"}]",
+      "expected_kept": 1,
+      "note": "7 characters."
+    },
+    {
+      "id": "p12",
+      "category": "short_cjk_fact",
+      "raw": "[{\"content\":\"偏好深色主题\",\"kind\":\"preference\"}]",
+      "expected_kept": 1,
+      "note": "6 characters, subject omitted (common in Chinese notes)."
+    },
+    {
+      "id": "p13",
+      "category": "short_cjk_fact",
+      "raw": "[{\"content\":\"用户只喝美式咖啡\",\"kind\":\"preference\"}]",
+      "expected_kept": 1,
+      "note": "8 characters, at the threshold."
+    },
+    {
+      "id": "p14",
+      "category": "short_en_fact",
+      "raw": "[{\"content\":\"Uses pnpm\",\"kind\":\"decision\"}]",
+      "expected_kept": 1,
+      "note": "9 characters; equivalent English length passes easily."
+    },
+    {
+      "id": "p15",
+      "category": "single_quotes",
+      "raw": "[{'content': 'Kim lives in Melbourne, Australia.'}]",
+      "expected_kept": 1
+    }
+  ]
+}
